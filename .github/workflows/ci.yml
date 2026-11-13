@@ -25,9 +25,9 @@ jobs:
     timeout-minutes: 5
     steps:
       - uses: actions/checkout@v4
-      - name: No .env file is tracked (only .env.example may be)
+      - name: No .env file is tracked (placeholder and test-config files are allowed)
         run: |
-          if git ls-files | grep -E '(^|/)\.env(\..+)?$' | grep -v '\.env\.example$'; then
+          if git ls-files | grep -E '(^|/)\.env(\..+)?$' | grep -vE '\.env\.(example|test)$'; then
             echo "A real .env file is tracked. Remove it from Git and rotate any secret it held."
             exit 1
           fi
