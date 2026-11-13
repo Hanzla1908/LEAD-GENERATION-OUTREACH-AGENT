@@ -1,0 +1,1224 @@
+{
+  "_comment": "Industry profiles. Edit this file to add or change an industry or subcategory; no code change is needed. Keys must be lowercase letters, digits and underscores. The server reads this file at startup. Only the restaurants_food profile is required to keep today's behaviour unchanged.",
+  "industries": [
+    {
+      "key": "restaurants_food",
+      "name": "Food & Beverage",
+      "business_noun": "restaurant",
+      "enabled": true,
+      "subcategories": [
+        {
+          "key": "all",
+          "name": "All food businesses",
+          "search_text": "restaurants",
+          "provider_type": null
+        },
+        {
+          "key": "desi",
+          "name": "Pakistani food business",
+          "search_text": "Pakistani restaurant",
+          "provider_type": null
+        },
+        {
+          "key": "fast_food",
+          "name": "Fast food",
+          "search_text": "fast food restaurant",
+          "provider_type": "fast_food_restaurant"
+        },
+        {
+          "key": "burgers",
+          "name": "Burgers and sandwiches",
+          "search_text": "burger sandwich shop",
+          "provider_type": null
+        },
+        {
+          "key": "pizza",
+          "name": "Pizza",
+          "search_text": "pizza restaurant",
+          "provider_type": "pizza_restaurant"
+        },
+        {
+          "key": "bbq",
+          "name": "BBQ and grill",
+          "search_text": "BBQ grill restaurant",
+          "provider_type": "barbecue_restaurant"
+        },
+        {
+          "key": "biryani",
+          "name": "Biryani",
+          "search_text": "biryani restaurant",
+          "provider_type": null
+        },
+        {
+          "key": "karahi",
+          "name": "Karahi and handi",
+          "search_text": "karahi handi restaurant",
+          "provider_type": null
+        },
+        {
+          "key": "chinese",
+          "name": "Chinese",
+          "search_text": "Chinese restaurant",
+          "provider_type": "chinese_restaurant"
+        },
+        {
+          "key": "continental",
+          "name": "Continental",
+          "search_text": "continental restaurant",
+          "provider_type": null
+        },
+        {
+          "key": "italian",
+          "name": "Italian",
+          "search_text": "Italian restaurant",
+          "provider_type": "italian_restaurant"
+        },
+        {
+          "key": "cafe",
+          "name": "Cafe and coffee",
+          "search_text": "cafe coffee shop",
+          "provider_type": "cafe"
+        },
+        {
+          "key": "tea",
+          "name": "Tea and dhaba",
+          "search_text": "tea chai dhaba",
+          "provider_type": null
+        },
+        {
+          "key": "bakery",
+          "name": "Bakery and desserts",
+          "search_text": "bakery dessert shop",
+          "provider_type": "bakery"
+        },
+        {
+          "key": "ice_cream",
+          "name": "Ice cream and sweets",
+          "search_text": "ice cream sweets",
+          "provider_type": "ice_cream_shop"
+        },
+        {
+          "key": "breakfast",
+          "name": "Breakfast",
+          "search_text": "breakfast nashta restaurant",
+          "provider_type": "breakfast_restaurant"
+        },
+        {
+          "key": "street_food",
+          "name": "Street food and chaat",
+          "search_text": "street food chaat",
+          "provider_type": null
+        },
+        {
+          "key": "seafood",
+          "name": "Seafood",
+          "search_text": "seafood restaurant",
+          "provider_type": "seafood_restaurant"
+        },
+        {
+          "key": "healthy",
+          "name": "Healthy food",
+          "search_text": "healthy food restaurant",
+          "provider_type": null
+        },
+        {
+          "key": "other",
+          "name": "Other food businesses",
+          "search_text": "restaurant",
+          "provider_type": null
+        }
+      ],
+      "primary_feature": "ordering",
+      "website_features": [
+        {
+          "key": "ordering",
+          "label": "Online ordering",
+          "keywords": [
+            "order online",
+            "order now",
+            "order food",
+            "place order",
+            "start order",
+            "order delivery",
+            "get delivery",
+            "order here",
+            "order pickup",
+            "online ordering",
+            "add to cart"
+          ],
+          "domains": [
+            "doordash.com",
+            "ubereats.com",
+            "grubhub.com",
+            "toasttab.com",
+            "olo.com",
+            "chownow.com",
+            "slice.com",
+            "seamless.com",
+            "postmates.com",
+            "caviar.com",
+            "delivery.com",
+            "bopple.me",
+            "popmenu.com",
+            "ordercounter.com",
+            "hungerrush.com",
+            "order.online",
+            "bentobox.com"
+          ]
+        },
+        {
+          "key": "menu",
+          "label": "Menu",
+          "keywords": [
+            "our menu",
+            "view menu",
+            "food menu",
+            "see menu",
+            "view our menu"
+          ],
+          "domains": []
+        },
+        {
+          "key": "reservations",
+          "label": "Table reservations",
+          "keywords": [
+            "reserve a table",
+            "book a table",
+            "table reservation",
+            "reservations"
+          ],
+          "domains": []
+        }
+      ],
+      "scoring": {
+        "website_present": 30,
+        "website_not_found": -40,
+        "primary_missing": 25,
+        "primary_present": -20,
+        "email_found": 25,
+        "phone_present": 10
+      },
+      "thresholds": {
+        "qualified": 55,
+        "needs_review": 20
+      },
+      "outreach": {
+        "instructions": "Write to the owner of a restaurant. Mention food, dine-in, takeaway or delivery only when the facts say so. Do not claim the restaurant lacks a menu or a website unless the facts say so.",
+        "angle_keys": {
+          "website_gap": "website_gap",
+          "feature_gap": "ordering_gap",
+          "feature_present": "ai_assistant",
+          "general": "general"
+        },
+        "angles": {
+          "website_gap": "the restaurant's website was not found or is down; offer website development",
+          "feature_gap": "the restaurant has a website but no online ordering; offer online ordering setup",
+          "feature_present": "the restaurant already has online ordering; offer an AI order-taking assistant upgrade",
+          "general": "offer general digital services tailored to restaurants"
+        },
+        "services": [
+          "Website development",
+          "Online ordering setup",
+          "AI order-taking assistant",
+          "Table reservation booking"
+        ]
+      },
+      "custom_fields": [
+        {
+          "key": "cuisine",
+          "label": "Cuisine",
+          "type": "text",
+          "max_length": 80
+        }
+      ]
+    },
+    {
+      "key": "real_estate",
+      "name": "Real Estate & Property",
+      "business_noun": "real estate business",
+      "enabled": true,
+      "subcategories": [
+        {
+          "key": "agency",
+          "name": "Property agency",
+          "search_text": "real estate agency",
+          "provider_type": "real_estate_agency"
+        },
+        {
+          "key": "developer",
+          "name": "Property developer",
+          "search_text": "property developer housing society",
+          "provider_type": null
+        },
+        {
+          "key": "rentals",
+          "name": "Rentals and property management",
+          "search_text": "property rental management",
+          "provider_type": null
+        }
+      ],
+      "primary_feature": "inquiry_form",
+      "website_features": [
+        {
+          "key": "listings",
+          "label": "Property listings",
+          "keywords": [
+            "properties for sale",
+            "property listings",
+            "for sale",
+            "for rent",
+            "our properties",
+            "available properties",
+            "plots for sale"
+          ],
+          "domains": [
+            "zameen.com",
+            "olx.com.pk"
+          ]
+        },
+        {
+          "key": "inquiry_form",
+          "label": "Inquiry form",
+          "keywords": [
+            "enquire now",
+            "send an enquiry",
+            "send inquiry",
+            "request information",
+            "schedule a viewing",
+            "book a viewing",
+            "contact agent"
+          ],
+          "domains": []
+        },
+        {
+          "key": "project_pages",
+          "label": "Project pages",
+          "keywords": [
+            "our projects",
+            "upcoming projects",
+            "project details",
+            "payment plan"
+          ],
+          "domains": []
+        }
+      ],
+      "scoring": {
+        "website_present": 30,
+        "website_not_found": -40,
+        "primary_missing": 25,
+        "primary_present": -20,
+        "email_found": 25,
+        "phone_present": 10
+      },
+      "thresholds": {
+        "qualified": 55,
+        "needs_review": 20
+      },
+      "outreach": {
+        "instructions": "Write to the principal of a property business. Talk about buyer and tenant enquiries, listing visibility and viewing requests. Stay on this industry's own topics and wording.",
+        "angle_keys": {
+          "website_gap": "website_gap",
+          "feature_gap": "inquiry_gap",
+          "feature_present": "inquiry_upgrade",
+          "general": "general"
+        },
+        "angles": {
+          "website_gap": "the business website was not found or is down; offer a property listing website",
+          "feature_gap": "the website shows properties but no enquiry or viewing request form; offer an inquiry automation form",
+          "feature_present": "the website already has an enquiry form; offer an AI enquiry assistant that qualifies buyers",
+          "general": "offer lead management for property enquiries"
+        },
+        "services": [
+          "Property listing website",
+          "Enquiry and viewing request automation",
+          "AI enquiry assistant",
+          "Lead management for property enquiries"
+        ]
+      },
+      "custom_fields": [
+        {
+          "key": "property_types",
+          "label": "Property types",
+          "type": "text",
+          "max_length": 120
+        }
+      ]
+    },
+    {
+      "key": "education",
+      "name": "Education & Training",
+      "business_noun": "education provider",
+      "enabled": true,
+      "subcategories": [
+        {
+          "key": "school",
+          "name": "Schools and academies",
+          "search_text": "private school academy",
+          "provider_type": "school"
+        },
+        {
+          "key": "college",
+          "name": "Colleges and universities",
+          "search_text": "college university institute",
+          "provider_type": "university"
+        },
+        {
+          "key": "training",
+          "name": "Training and courses",
+          "search_text": "computer training institute course center",
+          "provider_type": null
+        }
+      ],
+      "primary_feature": "admissions",
+      "website_features": [
+        {
+          "key": "courses",
+          "label": "Courses",
+          "keywords": [
+            "our courses",
+            "courses",
+            "programs",
+            "programmes",
+            "course list"
+          ],
+          "domains": []
+        },
+        {
+          "key": "admissions",
+          "label": "Admissions and applications",
+          "keywords": [
+            "apply now",
+            "admissions",
+            "application form",
+            "enroll now",
+            "enrol now",
+            "register now"
+          ],
+          "domains": []
+        }
+      ],
+      "scoring": {
+        "website_present": 30,
+        "website_not_found": -40,
+        "primary_missing": 25,
+        "primary_present": -20,
+        "email_found": 25,
+        "phone_present": 10
+      },
+      "thresholds": {
+        "qualified": 55,
+        "needs_review": 20
+      },
+      "outreach": {
+        "instructions": "Write to the admissions head of an education provider. Talk about enquiries from prospective students, applications and follow-up. Stay on this industry's own topics and wording.",
+        "angle_keys": {
+          "website_gap": "website_gap",
+          "feature_gap": "admissions_gap",
+          "feature_present": "admissions_upgrade",
+          "general": "general"
+        },
+        "angles": {
+          "website_gap": "the institute's website was not found or is down; offer a course and admissions website",
+          "feature_gap": "the website lists courses but has no online application or enrolment step; offer online admissions",
+          "feature_present": "the website already takes applications; offer an AI admissions assistant that answers student questions",
+          "general": "offer lead management for student enquiries"
+        },
+        "services": [
+          "Course and admissions website",
+          "Online application automation",
+          "AI admissions assistant",
+          "Student enquiry lead management"
+        ]
+      },
+      "custom_fields": [
+        {
+          "key": "accreditation",
+          "label": "Accreditation",
+          "type": "text",
+          "max_length": 120
+        }
+      ]
+    },
+    {
+      "key": "healthcare",
+      "name": "Healthcare & Clinics",
+      "business_noun": "clinic",
+      "enabled": true,
+      "subcategories": [
+        {
+          "key": "clinic",
+          "name": "Clinics",
+          "search_text": "clinic medical centre",
+          "provider_type": "medical_clinic"
+        },
+        {
+          "key": "dental",
+          "name": "Dental clinics",
+          "search_text": "dental clinic dentist",
+          "provider_type": "dentist"
+        },
+        {
+          "key": "hospital",
+          "name": "Hospitals",
+          "search_text": "private hospital",
+          "provider_type": "hospital"
+        }
+      ],
+      "primary_feature": "appointments",
+      "website_features": [
+        {
+          "key": "services",
+          "label": "Services and treatments",
+          "keywords": [
+            "our services",
+            "treatments",
+            "medical services",
+            "specialities",
+            "specialties"
+          ],
+          "domains": []
+        },
+        {
+          "key": "appointments",
+          "label": "Online appointments",
+          "keywords": [
+            "book appointment",
+            "book an appointment",
+            "book online",
+            "make an appointment",
+            "schedule appointment"
+          ],
+          "domains": [
+            "oladoc.com",
+            "marham.pk",
+            "sehat.com.pk"
+          ]
+        },
+        {
+          "key": "doctor_profiles",
+          "label": "Doctor profiles",
+          "keywords": [
+            "our doctors",
+            "meet our doctors",
+            "our team",
+            "our specialists"
+          ],
+          "domains": []
+        }
+      ],
+      "scoring": {
+        "website_present": 30,
+        "website_not_found": -40,
+        "primary_missing": 25,
+        "primary_present": -20,
+        "email_found": 25,
+        "phone_present": 10
+      },
+      "thresholds": {
+        "qualified": 55,
+        "needs_review": 20
+      },
+      "outreach": {
+        "instructions": "Write to the clinic manager or owner. Talk about patient enquiries and appointment booking. Do not give medical advice, do not make health claims. Stay on this industry's own topics and wording.",
+        "angle_keys": {
+          "website_gap": "website_gap",
+          "feature_gap": "appointments_gap",
+          "feature_present": "appointments_upgrade",
+          "general": "general"
+        },
+        "angles": {
+          "website_gap": "the clinic's website was not found or is down; offer a patient-facing clinic website",
+          "feature_gap": "the website has no online appointment booking; offer appointment booking automation",
+          "feature_present": "the website already offers appointments; offer an AI assistant that answers patient questions and reduces missed calls",
+          "general": "offer patient enquiry and lead management"
+        },
+        "services": [
+          "Clinic website",
+          "Online appointment booking",
+          "AI patient-enquiry assistant",
+          "Patient lead management"
+        ]
+      },
+      "custom_fields": [
+        {
+          "key": "specialities",
+          "label": "Specialities",
+          "type": "text",
+          "max_length": 120
+        }
+      ]
+    },
+    {
+      "key": "home_services",
+      "name": "Home Services & Construction",
+      "business_noun": "contractor",
+      "enabled": true,
+      "subcategories": [
+        {
+          "key": "construction",
+          "name": "Construction contractors",
+          "search_text": "construction contractor",
+          "provider_type": "general_contractor"
+        },
+        {
+          "key": "plumbing",
+          "name": "Plumbing and electrical",
+          "search_text": "plumber electrician",
+          "provider_type": "plumber"
+        },
+        {
+          "key": "cleaning",
+          "name": "Cleaning and maintenance",
+          "search_text": "home cleaning maintenance service",
+          "provider_type": null
+        }
+      ],
+      "primary_feature": "quote_request",
+      "website_features": [
+        {
+          "key": "services",
+          "label": "Service pages",
+          "keywords": [
+            "our services",
+            "services",
+            "what we do"
+          ],
+          "domains": []
+        },
+        {
+          "key": "quote_request",
+          "label": "Quote request",
+          "keywords": [
+            "get a quote",
+            "request a quote",
+            "free quote",
+            "request quotation",
+            "book a service"
+          ],
+          "domains": []
+        }
+      ],
+      "scoring": {
+        "website_present": 30,
+        "website_not_found": -40,
+        "primary_missing": 25,
+        "primary_present": -20,
+        "email_found": 25,
+        "phone_present": 10
+      },
+      "thresholds": {
+        "qualified": 55,
+        "needs_review": 20
+      },
+      "outreach": {
+        "instructions": "Write to the owner of a home service or construction business. Talk about quote requests and job enquiries. Stay on this industry's own topics and wording.",
+        "angle_keys": {
+          "website_gap": "website_gap",
+          "feature_gap": "quote_gap",
+          "feature_present": "quote_upgrade",
+          "general": "general"
+        },
+        "angles": {
+          "website_gap": "the business website was not found or is down; offer a service website",
+          "feature_gap": "the website has no quote request form; offer a quote request automation",
+          "feature_present": "the website already takes quote requests; offer an AI assistant that qualifies job enquiries",
+          "general": "offer job enquiry and lead management"
+        },
+        "services": [
+          "Service website",
+          "Quote request automation",
+          "AI job-enquiry assistant",
+          "Lead management for job enquiries"
+        ]
+      },
+      "custom_fields": [
+        {
+          "key": "service_areas",
+          "label": "Service areas",
+          "type": "text",
+          "max_length": 120
+        }
+      ]
+    },
+    {
+      "key": "automotive",
+      "name": "Automotive",
+      "business_noun": "car dealer or workshop",
+      "enabled": true,
+      "subcategories": [
+        {
+          "key": "dealer",
+          "name": "Car dealers",
+          "search_text": "car dealer showroom",
+          "provider_type": "car_dealer"
+        },
+        {
+          "key": "workshop",
+          "name": "Auto workshops and repair",
+          "search_text": "car repair workshop service center",
+          "provider_type": "car_repair"
+        },
+        {
+          "key": "parts",
+          "name": "Auto parts",
+          "search_text": "auto parts shop",
+          "provider_type": "auto_parts_store"
+        }
+      ],
+      "primary_feature": "service_booking",
+      "website_features": [
+        {
+          "key": "inventory",
+          "label": "Vehicle inventory",
+          "keywords": [
+            "inventory",
+            "used cars",
+            "new cars",
+            "our cars",
+            "vehicles for sale"
+          ],
+          "domains": [
+            "pakwheels.com",
+            "olx.com.pk"
+          ]
+        },
+        {
+          "key": "service_booking",
+          "label": "Service booking",
+          "keywords": [
+            "book a service",
+            "book service",
+            "service appointment",
+            "book an appointment",
+            "schedule service"
+          ],
+          "domains": []
+        }
+      ],
+      "scoring": {
+        "website_present": 30,
+        "website_not_found": -40,
+        "primary_missing": 25,
+        "primary_present": -20,
+        "email_found": 25,
+        "phone_present": 10
+      },
+      "thresholds": {
+        "qualified": 55,
+        "needs_review": 20
+      },
+      "outreach": {
+        "instructions": "Write to the owner or sales manager of a vehicle business. Talk about vehicle enquiries and service bookings. Stay on this industry's own topics and wording.",
+        "angle_keys": {
+          "website_gap": "website_gap",
+          "feature_gap": "booking_gap",
+          "feature_present": "booking_upgrade",
+          "general": "general"
+        },
+        "angles": {
+          "website_gap": "the business website was not found or is down; offer a dealer or workshop website",
+          "feature_gap": "the website shows vehicles or services but no service booking; offer online service booking",
+          "feature_present": "the website already offers bookings; offer an AI assistant for vehicle enquiries",
+          "general": "offer enquiry and lead management for vehicle customers"
+        },
+        "services": [
+          "Dealer or workshop website",
+          "Online service booking",
+          "AI vehicle-enquiry assistant",
+          "Customer lead management"
+        ]
+      },
+      "custom_fields": [
+        {
+          "key": "brands",
+          "label": "Brands serviced",
+          "type": "text",
+          "max_length": 120
+        }
+      ]
+    },
+    {
+      "key": "hospitality_travel",
+      "name": "Hospitality & Travel",
+      "business_noun": "hotel or travel business",
+      "enabled": true,
+      "subcategories": [
+        {
+          "key": "hotel",
+          "name": "Hotels and guest houses",
+          "search_text": "hotel guest house",
+          "provider_type": "hotel"
+        },
+        {
+          "key": "tour",
+          "name": "Tour operators",
+          "search_text": "tour operator travel agency",
+          "provider_type": "travel_agency"
+        },
+        {
+          "key": "resort",
+          "name": "Resorts",
+          "search_text": "resort hotel",
+          "provider_type": "resort_hotel"
+        }
+      ],
+      "primary_feature": "reservations",
+      "website_features": [
+        {
+          "key": "rooms",
+          "label": "Rooms and packages",
+          "keywords": [
+            "our rooms",
+            "rooms",
+            "suites",
+            "packages",
+            "tour packages"
+          ],
+          "domains": []
+        },
+        {
+          "key": "reservations",
+          "label": "Online reservations",
+          "keywords": [
+            "book now",
+            "check availability",
+            "reserve",
+            "book your stay",
+            "book a tour"
+          ],
+          "domains": [
+            "booking.com",
+            "tripadvisor.com",
+            "agoda.com"
+          ]
+        }
+      ],
+      "scoring": {
+        "website_present": 30,
+        "website_not_found": -40,
+        "primary_missing": 25,
+        "primary_present": -20,
+        "email_found": 25,
+        "phone_present": 10
+      },
+      "thresholds": {
+        "qualified": 55,
+        "needs_review": 20
+      },
+      "outreach": {
+        "instructions": "Write to the manager of a hotel or travel business. Talk about guest or traveller enquiries and bookings. Stay on this industry's own topics and wording.",
+        "angle_keys": {
+          "website_gap": "website_gap",
+          "feature_gap": "reservation_gap",
+          "feature_present": "reservation_upgrade",
+          "general": "general"
+        },
+        "angles": {
+          "website_gap": "the business website was not found or is down; offer a booking website",
+          "feature_gap": "the website has no direct booking; offer online reservations",
+          "feature_present": "the website already takes bookings; offer an AI guest-enquiry assistant",
+          "general": "offer enquiry and lead management for guests and travellers"
+        },
+        "services": [
+          "Booking website",
+          "Direct online reservations",
+          "AI guest-enquiry assistant",
+          "Enquiry lead management"
+        ]
+      },
+      "custom_fields": [
+        {
+          "key": "star_rating",
+          "label": "Star rating",
+          "type": "text",
+          "max_length": 20
+        }
+      ]
+    },
+    {
+      "key": "manufacturing_wholesale",
+      "name": "Manufacturing & Wholesale",
+      "business_noun": "manufacturer or wholesaler",
+      "enabled": true,
+      "subcategories": [
+        {
+          "key": "manufacturer",
+          "name": "Manufacturers",
+          "search_text": "manufacturer factory",
+          "provider_type": null
+        },
+        {
+          "key": "wholesaler",
+          "name": "Wholesalers and distributors",
+          "search_text": "wholesale distributor supplier",
+          "provider_type": null
+        },
+        {
+          "key": "exporter",
+          "name": "Exporters",
+          "search_text": "exporter export company",
+          "provider_type": null
+        }
+      ],
+      "primary_feature": "quotation",
+      "website_features": [
+        {
+          "key": "catalog",
+          "label": "Product catalogue",
+          "keywords": [
+            "our products",
+            "product catalog",
+            "product catalogue",
+            "catalog",
+            "catalogue",
+            "product range"
+          ],
+          "domains": [
+            "indiamart.com",
+            "alibaba.com",
+            "tradeindia.com"
+          ]
+        },
+        {
+          "key": "quotation",
+          "label": "Quotation form",
+          "keywords": [
+            "request a quote",
+            "request quotation",
+            "get a quote",
+            "request price",
+            "bulk order enquiry"
+          ],
+          "domains": []
+        }
+      ],
+      "scoring": {
+        "website_present": 30,
+        "website_not_found": -40,
+        "primary_missing": 25,
+        "primary_present": -20,
+        "email_found": 25,
+        "phone_present": 10
+      },
+      "thresholds": {
+        "qualified": 55,
+        "needs_review": 20
+      },
+      "outreach": {
+        "instructions": "Write to the sales or operations head of a manufacturer or wholesaler. Talk about trade enquiries, quotation requests and catalogue visibility. Stay on this industry's own topics and wording.",
+        "angle_keys": {
+          "website_gap": "website_gap",
+          "feature_gap": "quotation_gap",
+          "feature_present": "quotation_upgrade",
+          "general": "general"
+        },
+        "angles": {
+          "website_gap": "the company website was not found or is down; offer a product catalogue website",
+          "feature_gap": "the website has a catalogue but no quotation form; offer a quotation request automation",
+          "feature_present": "the website already takes quotation requests; offer an AI assistant that qualifies bulk enquiries",
+          "general": "offer trade enquiry and lead management"
+        },
+        "services": [
+          "Product catalogue website",
+          "Quotation request automation",
+          "AI bulk-enquiry assistant",
+          "Trade lead management"
+        ]
+      },
+      "custom_fields": [
+        {
+          "key": "product_lines",
+          "label": "Product lines",
+          "type": "text",
+          "max_length": 160
+        }
+      ]
+    },
+    {
+      "key": "beauty_fitness_wellness",
+      "name": "Beauty, Fitness & Wellness",
+      "business_noun": "salon, gym or wellness studio",
+      "enabled": true,
+      "subcategories": [
+        {
+          "key": "salon",
+          "name": "Salons and beauty",
+          "search_text": "beauty salon",
+          "provider_type": "beauty_salon"
+        },
+        {
+          "key": "gym",
+          "name": "Gyms and fitness",
+          "search_text": "gym fitness centre",
+          "provider_type": "gym"
+        },
+        {
+          "key": "spa",
+          "name": "Spas and wellness",
+          "search_text": "spa wellness centre",
+          "provider_type": "spa"
+        }
+      ],
+      "primary_feature": "booking",
+      "website_features": [
+        {
+          "key": "services",
+          "label": "Services and packages",
+          "keywords": [
+            "our services",
+            "packages",
+            "memberships",
+            "classes",
+            "treatments"
+          ],
+          "domains": []
+        },
+        {
+          "key": "booking",
+          "label": "Online booking",
+          "keywords": [
+            "book now",
+            "book appointment",
+            "book a class",
+            "book your visit",
+            "book online"
+          ],
+          "domains": [
+            "fresha.com",
+            "mindbody.com"
+          ]
+        }
+      ],
+      "scoring": {
+        "website_present": 30,
+        "website_not_found": -40,
+        "primary_missing": 25,
+        "primary_present": -20,
+        "email_found": 25,
+        "phone_present": 10
+      },
+      "thresholds": {
+        "qualified": 55,
+        "needs_review": 20
+      },
+      "outreach": {
+        "instructions": "Write to the owner or manager of a salon, gym or wellness studio. Talk about client bookings and enquiries. Do not make health or results claims. Stay on this industry's own topics and wording.",
+        "angle_keys": {
+          "website_gap": "website_gap",
+          "feature_gap": "booking_gap",
+          "feature_present": "booking_upgrade",
+          "general": "general"
+        },
+        "angles": {
+          "website_gap": "the business website was not found or is down; offer a booking website",
+          "feature_gap": "the website has no online booking; offer online booking automation",
+          "feature_present": "the website already offers booking; offer an AI assistant that handles client enquiries and rebooking",
+          "general": "offer client enquiry and lead management"
+        },
+        "services": [
+          "Booking website",
+          "Online booking automation",
+          "AI client-enquiry assistant",
+          "Client lead management"
+        ]
+      },
+      "custom_fields": [
+        {
+          "key": "services_offered",
+          "label": "Services offered",
+          "type": "text",
+          "max_length": 160
+        }
+      ]
+    },
+    {
+      "key": "professional_services",
+      "name": "Professional Services",
+      "business_noun": "professional services firm",
+      "enabled": true,
+      "subcategories": [
+        {
+          "key": "legal",
+          "name": "Law firms",
+          "search_text": "law firm lawyer advocate",
+          "provider_type": "lawyer"
+        },
+        {
+          "key": "accounting",
+          "name": "Accounting and tax",
+          "search_text": "accounting firm tax consultant",
+          "provider_type": "accounting"
+        },
+        {
+          "key": "consulting",
+          "name": "Consulting and agencies",
+          "search_text": "consulting firm business consultant",
+          "provider_type": null
+        }
+      ],
+      "primary_feature": "consultation",
+      "website_features": [
+        {
+          "key": "practice_areas",
+          "label": "Services and practice areas",
+          "keywords": [
+            "our services",
+            "practice areas",
+            "areas of practice",
+            "what we do"
+          ],
+          "domains": []
+        },
+        {
+          "key": "consultation",
+          "label": "Consultation booking",
+          "keywords": [
+            "book a consultation",
+            "free consultation",
+            "request a consultation",
+            "schedule a call",
+            "contact us today"
+          ],
+          "domains": []
+        }
+      ],
+      "scoring": {
+        "website_present": 30,
+        "website_not_found": -40,
+        "primary_missing": 25,
+        "primary_present": -20,
+        "email_found": 25,
+        "phone_present": 10
+      },
+      "thresholds": {
+        "qualified": 55,
+        "needs_review": 20
+      },
+      "outreach": {
+        "instructions": "Write to a partner or managing director of a professional services firm. Talk about client enquiries and consultation requests. Do not give legal or financial advice. Stay on this industry's own topics and wording.",
+        "angle_keys": {
+          "website_gap": "website_gap",
+          "feature_gap": "consultation_gap",
+          "feature_present": "consultation_upgrade",
+          "general": "general"
+        },
+        "angles": {
+          "website_gap": "the firm's website was not found or is down; offer a professional services website",
+          "feature_gap": "the website has no consultation request step; offer consultation booking automation",
+          "feature_present": "the website already takes consultation requests; offer an AI intake assistant",
+          "general": "offer client enquiry and lead management"
+        },
+        "services": [
+          "Professional services website",
+          "Consultation booking automation",
+          "AI client-intake assistant",
+          "Client lead management"
+        ]
+      },
+      "custom_fields": [
+        {
+          "key": "practice_focus",
+          "label": "Practice focus",
+          "type": "text",
+          "max_length": 160
+        }
+      ]
+    },
+    {
+      "key": "solar_home_services",
+      "name": "Solar & Home Services",
+      "business_noun": "solar installer",
+      "enabled": true,
+      "subcategories": [
+        {
+          "key": "solar_installers",
+          "name": "Solar installers",
+          "search_text": "solar panel installation company",
+          "provider_type": null
+        },
+        {
+          "key": "battery_ups",
+          "name": "Battery and UPS dealers",
+          "search_text": "solar battery UPS dealer",
+          "provider_type": null
+        },
+        {
+          "key": "solar_maintenance",
+          "name": "Solar maintenance",
+          "search_text": "solar panel cleaning maintenance service",
+          "provider_type": null
+        }
+      ],
+      "primary_feature": "quote_request",
+      "website_features": [
+        {
+          "key": "solar_packages",
+          "label": "Solar packages",
+          "keywords": [
+            "solar packages",
+            "our packages",
+            "solar systems",
+            "residential solar",
+            "commercial solar"
+          ],
+          "domains": []
+        },
+        {
+          "key": "quote_request",
+          "label": "Quote request",
+          "keywords": [
+            "get a quote",
+            "free solar quote",
+            "request a quote",
+            "book a site survey",
+            "schedule a survey"
+          ],
+          "domains": []
+        }
+      ],
+      "scoring": {
+        "website_present": 30,
+        "website_not_found": -40,
+        "primary_missing": 25,
+        "primary_present": -20,
+        "email_found": 25,
+        "phone_present": 10
+      },
+      "thresholds": {
+        "qualified": 55,
+        "needs_review": 20
+      },
+      "outreach": {
+        "instructions": "Write to the owner or sales manager of a solar installer. Talk about solar quote requests, site surveys and enquiries from homeowners or businesses. Stay on this industry's own topics and wording.",
+        "tone": "Practical and plain-spoken. Focus on reliability and clear next steps. Make no energy-saving or savings claims that the facts do not support.",
+        "goals": "Get a reply from the owner about turning website visitors into surveyed and quoted customers.",
+        "angle_keys": {
+          "website_gap": "website_gap",
+          "feature_gap": "quote_gap",
+          "feature_present": "quote_upgrade",
+          "general": "general"
+        },
+        "angles": {
+          "website_gap": "the business website was not found or is down; offer a solar company website",
+          "feature_gap": "the website shows solar packages but no quote or survey request form; offer quote request automation",
+          "feature_present": "the website already takes quote requests; offer an AI assistant that qualifies solar enquiries",
+          "general": "offer enquiry and lead management for solar customers"
+        },
+        "services": [
+          "Solar company website",
+          "Quote and survey request automation",
+          "AI sales assistant for solar enquiries",
+          "Lead management for solar enquiries"
+        ]
+      },
+      "custom_fields": [
+        {
+          "key": "service_area",
+          "label": "Service area",
+          "type": "text",
+          "max_length": 120
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,17 @@
+{
+  "name": "restaurant-outreach-email-service",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Internal Nodemailer service for the Restaurant Outreach System. Not exposed to the browser.",
+  "main": "src/server.js",
+  "scripts": {
+    "start": "node src/server.js",
+    "test": "node --test \"test/**/*.test.js\""
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "nodemailer": "10.3.1"
+  }
+}

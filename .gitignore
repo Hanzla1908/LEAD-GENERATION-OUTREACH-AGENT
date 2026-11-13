@@ -1,0 +1,66 @@
+# Environment and secrets. .env.example is NOT ignored: it holds placeholders only.
+.env
+.env.*
+!.env.example
+*.env
+*.pem
+*.key
+*.p12
+*.pfx
+id_rsa*
+credentials*.json
+secrets/
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.Python
+*.egg-info/
+dist/
+build/
+.venv/
+venv/
+env/
+
+# Database
+*.db
+*.sqlite3
+
+# Node
+node_modules/
+frontend/dist/
+frontend/.vite/
+frontend/test-results/
+frontend/playwright-report/
+frontend/coverage/
+
+# Local runtime output and Claude Code local state
+logs/
+*.log
+.claude/
+email-service/data/
+
+# Tool caches and build output
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+*.tsbuildinfo
+frontend/.playwright/
+
+# OS
+.DS_Store
+Thumbs.db
+~$*
+
+# IDE
+.vscode/
+.idea/
+*.swp
+
+# GeoNames city data: downloaded by backend/scripts/import_geonames.py, not committed. See backend/data/geonames/README.md
+backend/data/geonames/*
+!backend/data/geonames/README.md
