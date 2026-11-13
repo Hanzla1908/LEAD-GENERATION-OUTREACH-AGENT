@@ -110,13 +110,23 @@ export function ActionMenu({ label, items }) {
     }
     document.addEventListener('mousedown', onDown)
     document.addEventListener('keydown', onKey)
+    // The menu follows its button while the page scrolls, and closes only when the button leaves the screen or the
+    // window is resized. Closing on every scroll event closed a freshly opened menu when a scroll reported in late.
+    function follow() {
+      const rect = buttonRef.current?.getBoundingClientRect()
+      if (!rect || rect.bottom < 0 || rect.top > window.innerHeight) {
+        setOpen(false)
+        return
+      }
+      setPosition({ top: rect.bottom + 6, right: Math.max(8, window.innerWidth - rect.right) })
+    }
     window.addEventListener('resize', close)
-    window.addEventListener('scroll', close, true)
+    window.addEventListener('scroll', follow, true)
     return () => {
       document.removeEventListener('mousedown', onDown)
       document.removeEventListener('keydown', onKey)
       window.removeEventListener('resize', close)
-      window.removeEventListener('scroll', close, true)
+      window.removeEventListener('scroll', follow, true)
     }
   }, [open])
 

@@ -1,7 +1,11 @@
 import '@testing-library/jest-dom/vitest'
-import { cleanup } from '@testing-library/react'
+import { cleanup, configure } from '@testing-library/react'
 import { afterAll, afterEach, beforeAll, beforeEach } from 'vitest'
 import { installFakeApi, server } from '../support/mswServer'
+
+// The default wait for findBy/waitFor is 1 second. A cold CI runner can take longer than that to render the
+// first screen, so allow 5 seconds. This affects only how long a test waits, not what it asserts.
+configure({ asyncUtilTimeout: 5000 })
 
 beforeAll(() => {
   // Any request the fake backend does not answer fails the test instead of reaching the network.
