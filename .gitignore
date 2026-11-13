@@ -2,6 +2,8 @@
 .env
 .env.*
 !.env.example
+# Test configuration with no secrets: points Vitest at the MSW fake backend. Required by CI.
+!frontend/.env.test
 *.env
 *.pem
 *.key

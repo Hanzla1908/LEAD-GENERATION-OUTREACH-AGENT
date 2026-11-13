@@ -169,14 +169,14 @@ def test_changing_the_country_changes_the_query_sent_to_google(api, monkeypatch)
 
 # ── Deduplication and country-specific results ───────────────────────────────
 
-def test_a_place_found_twice_in_one_country_is_one_record():
+def test_a_place_found_twice_in_one_country_is_one_record(test_db):
     place = {"place_id": "google-dup-1", "name": "Dup Cafe", "source": "google_places"}
     save_restaurants([place], city="Dubai", country="United Arab Emirates", country_code="AE")
     save_restaurants([place], city="Dubai", country="United Arab Emirates", country_code="AE")
     assert fetch_one("SELECT COUNT(*) AS n FROM restaurants WHERE place_id = 'google-dup-1'")["n"] == 1
 
 
-def test_a_place_saved_under_one_country_is_not_returned_for_another():
+def test_a_place_saved_under_one_country_is_not_returned_for_another(test_db):
     place = {"place_id": "google-cross-1", "name": "Cross Cafe", "source": "google_places"}
     saved_us = save_restaurants([place], city="Austin", country="United States", country_code="US")
     assert saved_us[0]["country_code"] == "US"
