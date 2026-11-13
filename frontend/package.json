@@ -26,7 +26,7 @@
     "@testing-library/user-event": "14.6.8",
     "@vitejs/plugin-react": "^4.3.4",
     "jsdom": "26.1.0",
-    "msw": "2.15.0",
+    "msw": "3.0.4",
     "vite": "^6.0.5",
     "vitest": "5.0.5"
   },
