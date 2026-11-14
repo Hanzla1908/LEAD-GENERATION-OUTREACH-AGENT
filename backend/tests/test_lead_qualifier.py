@@ -108,7 +108,7 @@ def test_fallback_reason_no_breakdown():
 
 
 async def test_qualify_lead_qualified(monkeypatch):
-    monkeypatch.setenv("ANTHROPIC_API_KEY", "sk-fake")
+    monkeypatch.setenv("OPENAI_API_KEY", "sk-fake")
     restaurant = {
         "name": "Best Burger",
         "website_status": "present",
@@ -140,7 +140,7 @@ async def test_qualify_lead_needs_review():
 
 
 async def test_qualify_lead_fallback_when_no_api_key(monkeypatch):
-    monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
+    monkeypatch.delenv("OPENAI_API_KEY", raising=False)
     restaurant = {"name": "Fallback", "website_status": "present", "ordering_status": "not_found"}
     result = await qualify_lead(restaurant)
     # Should still work — falls back to deterministic reason

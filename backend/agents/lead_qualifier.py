@@ -20,9 +20,8 @@ Every score is explained by its breakdown. Claude may only summarise those facts
 status are set before Claude is called, and the fallback sentence is built from the same facts.
 """
 
-import os
-
 from services import industries
+from services.ai_provider import complete_text, provider_ready
 from services.industries import DEFAULT_INDUSTRY
 
 # Restaurant constants, kept under their old names for existing callers and tests.
@@ -147,8 +146,8 @@ def _system_prompt(industry: str) -> str:
 async def _claude_reason(
     restaurant: dict, score: int, status: str, breakdown: dict, industry: str = DEFAULT_INDUSTRY
 ) -> str:
-    api_key = os.getenv("ANTHROPIC_API_KEY")
-    if not api_key:
+    # A missing or misconfigured AI provider never blocks qualification: the sentence comes from the facts instead.
+    if not provider_ready():
         return _fallback_reason(status, breakdown, industry)
 
     facts = [
@@ -165,16 +164,12 @@ async def _claude_reason(
     ])
 
     try:
-        import anthropic
-
-        client = anthropic.Anthropic(api_key=api_key)
-        msg = client.messages.create(
-            model="claude-haiku-4-5",
-            max_tokens=80,
+        text = complete_text(
             system=_system_prompt(industry),
-            messages=[{"role": "user", "content": "\n".join(facts) + "\n\nWrite the one-sentence reason."}],
+            prompt="\n".join(facts) + "\n\nWrite the one-sentence reason.",
+            max_tokens=80,
         )
-        return msg.content[0].text.strip()[:200]
+        return text.strip()[:200]
     except Exception:
         return _fallback_reason(status, breakdown, industry)
 

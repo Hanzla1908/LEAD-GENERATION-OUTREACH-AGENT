@@ -65,18 +65,18 @@ def test_build_prompt_contains_name():
 
 # ── generate_draft (mocked) ───────────────────────────────────────────────────
 
-def _mock_anthropic(subject="Act Now!", body="Hello restaurant."):
+def _mock_reply(subject="Act Now!", body="Hello restaurant."):
     mock_client = MagicMock()
     mock_msg = MagicMock()
-    mock_msg.content = [MagicMock(text=json.dumps({"subject": subject, "body": body}))]
-    mock_client.messages.create.return_value = mock_msg
+    mock_msg.output_text = json.dumps({"subject": subject, "body": body})
+    mock_client.responses.create.return_value = mock_msg
     return mock_client
 
 
 @pytest.mark.asyncio
 async def test_generate_draft_returns_subject_body(monkeypatch):
-    monkeypatch.setenv("ANTHROPIC_API_KEY", "test-key")
-    with patch("services.outreach.anthropic.Anthropic", return_value=_mock_anthropic()):
+    monkeypatch.setenv("OPENAI_API_KEY", "test-key")
+    with patch("services.ai_provider._openai_client", return_value=_mock_reply()):
         result = await generate_draft({
             "name": "Test Bistro",
             "website_status": "present",
@@ -89,31 +89,31 @@ async def test_generate_draft_returns_subject_body(monkeypatch):
 
 @pytest.mark.asyncio
 async def test_generate_draft_raises_without_api_key(monkeypatch):
-    monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
-    with pytest.raises(ValueError, match="ANTHROPIC_API_KEY"):
+    monkeypatch.delenv("OPENAI_API_KEY", raising=False)
+    with pytest.raises(ValueError, match="OPENAI_API_KEY"):
         await generate_draft({"name": "X"})
 
 
 @pytest.mark.asyncio
 async def test_generate_draft_raises_on_bad_json(monkeypatch):
-    monkeypatch.setenv("ANTHROPIC_API_KEY", "test-key")
+    monkeypatch.setenv("OPENAI_API_KEY", "test-key")
     mock_client = MagicMock()
     mock_msg = MagicMock()
-    mock_msg.content = [MagicMock(text="not json at all")]
-    mock_client.messages.create.return_value = mock_msg
-    with patch("services.outreach.anthropic.Anthropic", return_value=mock_client):
+    mock_msg.output_text = "not json at all"
+    mock_client.responses.create.return_value = mock_msg
+    with patch("services.ai_provider._openai_client", return_value=mock_client):
         with pytest.raises(ValueError, match="non-JSON"):
             await generate_draft({"name": "X"})
 
 
 @pytest.mark.asyncio
 async def test_generate_draft_raises_on_empty_fields(monkeypatch):
-    monkeypatch.setenv("ANTHROPIC_API_KEY", "test-key")
+    monkeypatch.setenv("OPENAI_API_KEY", "test-key")
     mock_client = MagicMock()
     mock_msg = MagicMock()
-    mock_msg.content = [MagicMock(text=json.dumps({"subject": "", "body": "some body"}))]
-    mock_client.messages.create.return_value = mock_msg
-    with patch("services.outreach.anthropic.Anthropic", return_value=mock_client):
+    mock_msg.output_text = json.dumps({"subject": "", "body": "some body"})
+    mock_client.responses.create.return_value = mock_msg
+    with patch("services.ai_provider._openai_client", return_value=mock_client):
         with pytest.raises(ValueError, match="empty subject or body"):
             await generate_draft({"name": "X"})
 
@@ -272,8 +272,8 @@ def test_api_list_drafts_empty(db):
 
 
 def test_api_generate_draft(api_restaurant, db, monkeypatch):
-    monkeypatch.setenv("ANTHROPIC_API_KEY", "test-key")
-    with patch("services.outreach.anthropic.Anthropic", return_value=_mock_anthropic("Subject!", "Body text.")):
+    monkeypatch.setenv("OPENAI_API_KEY", "test-key")
+    with patch("services.ai_provider._openai_client", return_value=_mock_reply("Subject!", "Body text.")):
         resp = client.post("/outreach/generate", json={"restaurant_id": api_restaurant, "campaign": "default"})
     assert resp.status_code == 200
     data = resp.json()
@@ -282,10 +282,10 @@ def test_api_generate_draft(api_restaurant, db, monkeypatch):
 
 
 def test_api_generate_duplicate_returns_409(api_restaurant, db, monkeypatch):
-    monkeypatch.setenv("ANTHROPIC_API_KEY", "test-key")
-    with patch("services.outreach.anthropic.Anthropic", return_value=_mock_anthropic()):
+    monkeypatch.setenv("OPENAI_API_KEY", "test-key")
+    with patch("services.ai_provider._openai_client", return_value=_mock_reply()):
         client.post("/outreach/generate", json={"restaurant_id": api_restaurant, "campaign": "default"})
-    with patch("services.outreach.anthropic.Anthropic", return_value=_mock_anthropic()):
+    with patch("services.ai_provider._openai_client", return_value=_mock_reply()):
         resp = client.post("/outreach/generate", json={"restaurant_id": api_restaurant, "campaign": "default"})
     assert resp.status_code == 409
 
@@ -304,8 +304,8 @@ def test_api_generate_opted_out_returns_422(api_restaurant, db):
 
 
 def test_api_approve_draft(api_restaurant, db, monkeypatch):
-    monkeypatch.setenv("ANTHROPIC_API_KEY", "test-key")
-    with patch("services.outreach.anthropic.Anthropic", return_value=_mock_anthropic()):
+    monkeypatch.setenv("OPENAI_API_KEY", "test-key")
+    with patch("services.ai_provider._openai_client", return_value=_mock_reply()):
         gen = client.post("/outreach/generate", json={"restaurant_id": api_restaurant, "campaign": "approve_test"})
     draft_id = gen.json()["id"]
     resp = client.post(f"/outreach/drafts/{draft_id}/approve")
@@ -314,8 +314,8 @@ def test_api_approve_draft(api_restaurant, db, monkeypatch):
 
 
 def test_api_reject_draft(api_restaurant, db, monkeypatch):
-    monkeypatch.setenv("ANTHROPIC_API_KEY", "test-key")
-    with patch("services.outreach.anthropic.Anthropic", return_value=_mock_anthropic()):
+    monkeypatch.setenv("OPENAI_API_KEY", "test-key")
+    with patch("services.ai_provider._openai_client", return_value=_mock_reply()):
         gen = client.post("/outreach/generate", json={"restaurant_id": api_restaurant, "campaign": "reject_test"})
     draft_id = gen.json()["id"]
     resp = client.post(f"/outreach/drafts/{draft_id}/reject")
@@ -324,8 +324,8 @@ def test_api_reject_draft(api_restaurant, db, monkeypatch):
 
 
 def test_api_edit_draft(api_restaurant, db, monkeypatch):
-    monkeypatch.setenv("ANTHROPIC_API_KEY", "test-key")
-    with patch("services.outreach.anthropic.Anthropic", return_value=_mock_anthropic()):
+    monkeypatch.setenv("OPENAI_API_KEY", "test-key")
+    with patch("services.ai_provider._openai_client", return_value=_mock_reply()):
         gen = client.post("/outreach/generate", json={"restaurant_id": api_restaurant, "campaign": "edit_test"})
     draft_id = gen.json()["id"]
     resp = client.put(f"/outreach/drafts/{draft_id}", json={"subject": "New Subject", "body": "New Body"})
@@ -334,11 +334,11 @@ def test_api_edit_draft(api_restaurant, db, monkeypatch):
 
 
 def test_api_regenerate_draft(api_restaurant, db, monkeypatch):
-    monkeypatch.setenv("ANTHROPIC_API_KEY", "test-key")
-    with patch("services.outreach.anthropic.Anthropic", return_value=_mock_anthropic("First", "First body")):
+    monkeypatch.setenv("OPENAI_API_KEY", "test-key")
+    with patch("services.ai_provider._openai_client", return_value=_mock_reply("First", "First body")):
         gen = client.post("/outreach/generate", json={"restaurant_id": api_restaurant, "campaign": "regen_test"})
     old_id = gen.json()["id"]
-    with patch("services.outreach.anthropic.Anthropic", return_value=_mock_anthropic("Second", "Second body")):
+    with patch("services.ai_provider._openai_client", return_value=_mock_reply("Second", "Second body")):
         resp = client.post(f"/outreach/drafts/{old_id}/regenerate")
     assert resp.status_code == 200
     new_draft = resp.json()
@@ -356,8 +356,8 @@ def test_api_opt_out(api_restaurant, db):
 
 
 def test_api_approve_opted_out_returns_422(api_restaurant, db, monkeypatch):
-    monkeypatch.setenv("ANTHROPIC_API_KEY", "test-key")
-    with patch("services.outreach.anthropic.Anthropic", return_value=_mock_anthropic()):
+    monkeypatch.setenv("OPENAI_API_KEY", "test-key")
+    with patch("services.ai_provider._openai_client", return_value=_mock_reply()):
         gen = client.post("/outreach/generate", json={"restaurant_id": api_restaurant, "campaign": "opt_approve"})
     draft_id = gen.json()["id"]
     mark_opted_out(api_restaurant)

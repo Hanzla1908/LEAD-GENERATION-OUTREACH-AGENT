@@ -51,6 +51,28 @@ def account_client(test_db, monkeypatch):
 
 
 @pytest.fixture(autouse=True)
+def no_real_ai_calls(monkeypatch):
+    """Tests never reach a real AI provider. A developer's .env may hold live keys, so they are cleared here.
+
+    A test that needs a key sets it itself. Any test that does not patch a provider client fails loudly instead of
+    calling the network.
+    """
+    from services import ai_provider
+
+    monkeypatch.delenv("AI_PROVIDER", raising=False)
+    monkeypatch.delenv("OPENAI_API_KEY", raising=False)
+    monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
+    monkeypatch.setenv("OPENAI_MODEL", "test-model")
+    monkeypatch.delenv("ANTHROPIC_MODEL", raising=False)
+
+    def refuse(api_key):
+        raise AssertionError("A real AI provider client was requested in a test. Patch the client in the test.")
+
+    monkeypatch.setattr(ai_provider, "_openai_client", refuse)
+    monkeypatch.setattr(ai_provider, "_anthropic_client", refuse)
+
+
+@pytest.fixture(autouse=True)
 def offline_dns(monkeypatch):
     """Tests never touch the network. Every mail domain answers 'MX found' unless a test replaces this."""
     from services import email_validator
