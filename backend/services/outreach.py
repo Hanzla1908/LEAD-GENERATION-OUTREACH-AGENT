@@ -1,5 +1,6 @@
 """
-Outreach email draft generation using the Claude API (shared by every industry).
+Outreach email draft generation (shared by every industry). The AI call goes through services/ai_provider.py,
+which uses the provider named by AI_PROVIDER (OpenAI by default).
 
 Rules:
 - Uses only facts provided by the caller (verified lead data).
@@ -10,13 +11,11 @@ Rules:
 """
 
 import json
-import os
-
-import anthropic
 
 from agents.lead_qualifier import feature_status, industry_of
 from services import countries as country_registry
 from services import industries
+from services.ai_provider import complete_text, explain_provider_error
 from services.industries import DEFAULT_INDUSTRY
 
 # Restaurant angle texts, kept for existing callers. Each industry's own texts live in industries.json.
@@ -74,17 +73,7 @@ def _meaning_for(angle: str, industry: str) -> str:
 
 def explain_ai_error(exc: Exception) -> str:
     """A short, safe message for the screen. The API key and the raw provider text are never shown."""
-    text = str(exc).lower()
-    if isinstance(exc, anthropic.AuthenticationError):
-        return "The AI service rejected ANTHROPIC_API_KEY. Check the key in the .env file."
-    if isinstance(exc, anthropic.PermissionDeniedError):
-        return "The AI service refused this request for the configured key. Check the key's permissions."
-    if isinstance(exc, anthropic.RateLimitError):
-        return "The AI service is busy. Wait a moment and try again."
-    if "credit balance" in text or "billing" in text:
-        return ("The AI account has no credit left, so drafts cannot be written. "
-                "Add credit in the Anthropic console, then try again.")
-    return "The AI service could not write the draft right now. Try again shortly."
+    return explain_provider_error(exc)
 
 
 def build_prompt(restaurant: dict, angle: str, instructions: str | None = None) -> str:
@@ -139,28 +128,14 @@ async def generate_draft(restaurant: dict, instructions: str | None = None) -> d
         {"subject": str, "body": str, "angle": str}
 
     Raises:
-        ValueError: if ANTHROPIC_API_KEY missing or Claude returns unusable output.
+        ValueError: if the selected AI provider is not configured, fails, or returns unusable output.
     """
-    api_key = os.getenv("ANTHROPIC_API_KEY")
-    if not api_key:
-        raise ValueError("ANTHROPIC_API_KEY is not configured")
-
     industry = industry_of(restaurant)
     angle = choose_angle(restaurant)
     prompt = build_prompt(restaurant, angle, instructions)
 
-    client = anthropic.Anthropic(api_key=api_key)
-    try:
-        msg = client.messages.create(
-            model="claude-haiku-4-5",
-            max_tokens=500,
-            system=_system_prompt(industry),
-            messages=[{"role": "user", "content": prompt}],
-        )
-    except anthropic.APIError as exc:
-        raise ValueError(explain_ai_error(exc)) from exc
-
-    raw = msg.content[0].text.strip()
+    # The provider check, the key and the readable errors all live in services/ai_provider.py.
+    raw = complete_text(system=_system_prompt(industry), prompt=prompt, max_tokens=500).strip()
 
     # Strip optional markdown fences
     if "```" in raw:
@@ -171,12 +146,12 @@ async def generate_draft(restaurant: dict, instructions: str | None = None) -> d
     try:
         data = json.loads(raw)
     except json.JSONDecodeError as exc:
-        raise ValueError(f"Claude returned non-JSON output: {raw[:300]}") from exc
+        raise ValueError(f"The AI service returned non-JSON output: {raw[:300]}") from exc
 
     subject = str(data.get("subject", "")).strip()[:200]
     body = str(data.get("body", "")).strip()[:3000]
 
     if not subject or not body:
-        raise ValueError("Claude returned an empty subject or body")
+        raise ValueError("The AI service returned an empty subject or body")
 
     return {"subject": subject, "body": body, "angle": angle}

@@ -85,13 +85,13 @@ def test_reviewer_instructions_are_added_only_when_given():
 def api(test_db, monkeypatch):
     monkeypatch.setenv("SESSION_SECRET", TEST_SESSION_SECRET)
     monkeypatch.delenv("RATE_LIMIT_ENABLED", raising=False)
-    monkeypatch.setenv("ANTHROPIC_API_KEY", "sk-test-key")
+    monkeypatch.setenv("OPENAI_API_KEY", "sk-test-key")
     return signed_in_client(main.app)
 
 
 def _reply(subject: str, body: str):
     message = MagicMock()
-    message.content = [MagicMock(text=json.dumps({"subject": subject, "body": body}))]
+    message.output_text = json.dumps({"subject": subject, "body": body})
     return message
 
 
@@ -122,11 +122,11 @@ def test_regeneration_passes_the_reviewer_instructions_to_claude(api, monkeypatc
         sent.update(kwargs)
         return _reply("New subject", "New body for the solar company.")
 
-    client.messages.create.side_effect = create
-    monkeypatch.setattr("services.outreach.anthropic.Anthropic", lambda api_key: client)
+    client.responses.create.side_effect = create
+    monkeypatch.setattr("services.ai_provider._openai_client", lambda api_key: client)
     resp = api.post(f"/outreach/drafts/{did}/regenerate", json={"instructions": "Keep it under 80 words"})
     assert resp.status_code == 200, resp.text
-    assert "Keep it under 80 words" in sent["messages"][0]["content"]
+    assert "Keep it under 80 words" in sent["input"]
     assert fetch_one("SELECT status FROM email_drafts WHERE id = :id", {"id": did})["status"] == "rejected"
     assert resp.json()["status"] == "draft"
 
@@ -134,8 +134,8 @@ def test_regeneration_passes_the_reviewer_instructions_to_claude(api, monkeypatc
 def test_regeneration_without_instructions_still_works(api, monkeypatch):
     rid, did = _draft_for("regen-2", "Steel Works", "manufacturing_wholesale", "manufacturer")
     client = MagicMock()
-    client.messages.create.return_value = _reply("Quote request", "A short note about quotations.")
-    monkeypatch.setattr("services.outreach.anthropic.Anthropic", lambda api_key: client)
+    client.responses.create.return_value = _reply("Quote request", "A short note about quotations.")
+    monkeypatch.setattr("services.ai_provider._openai_client", lambda api_key: client)
     resp = api.post(f"/outreach/drafts/{did}/regenerate")
     assert resp.status_code == 200, resp.text
-    assert "Reviewer instructions" not in client.messages.create.call_args.kwargs["messages"][0]["content"]
+    assert "Reviewer instructions" not in client.responses.create.call_args.kwargs["input"]

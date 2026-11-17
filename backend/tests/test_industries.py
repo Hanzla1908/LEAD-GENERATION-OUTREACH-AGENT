@@ -304,7 +304,7 @@ def test_uncertain_leads_stay_in_review_rather_than_qualifying():
 
 
 async def test_the_reason_names_the_industry_feature_with_no_claude_key(monkeypatch):
-    monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
+    monkeypatch.delenv("OPENAI_API_KEY", raising=False)
     lead = _lead("real_estate", website_features={"inquiry_form": {"status": "not_found", "evidence": []}})
     result = await qualify_lead(lead)
     assert "inquiry form" in result["lead_reason"].lower()
@@ -316,7 +316,7 @@ async def test_the_reason_names_the_industry_feature_with_no_claude_key(monkeypa
 def _captured_draft(monkeypatch, lead):
     seen = {}
     fake_message = MagicMock()
-    fake_message.content = [MagicMock(text=json.dumps({"subject": "Hello", "body": "Hi there."}))]
+    fake_message.output_text = json.dumps({"subject": "Hello", "body": "Hi there."})
 
     def fake_client(api_key):
         client = MagicMock()
@@ -325,11 +325,11 @@ def _captured_draft(monkeypatch, lead):
             seen.update(kwargs)
             return fake_message
 
-        client.messages.create.side_effect = create
+        client.responses.create.side_effect = create
         return client
 
-    monkeypatch.setenv("ANTHROPIC_API_KEY", "test-key-not-used")
-    monkeypatch.setattr("services.outreach.anthropic.Anthropic", fake_client)
+    monkeypatch.setenv("OPENAI_API_KEY", "test-key-not-used")
+    monkeypatch.setattr("services.ai_provider._openai_client", fake_client)
     import asyncio
     asyncio.run(generate_draft(lead))
     return seen
@@ -339,7 +339,7 @@ def test_real_estate_drafts_never_use_restaurant_wording(monkeypatch):
     lead = _lead("real_estate", name="Gulberg Homes", website_status="present",
                  website_features={"inquiry_form": {"status": "not_found", "evidence": []}})
     sent = _captured_draft(monkeypatch, lead)
-    text = (sent["system"] + sent["messages"][0]["content"]).lower()
+    text = (sent["instructions"] + sent["input"]).lower()
     assert "property" in text or "real estate" in text
     assert "restaurant" not in text
     assert "order" not in text and "menu" not in text

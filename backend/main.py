@@ -513,7 +513,15 @@ async def startup():
         logging.warning("DEMO_MODE is on: restaurant search returns sample records only.")
     elif not live_api_key():
         logging.warning("DEMO_MODE is off but GOOGLE_PLACES_API_KEY is missing: live searches will fail.")
-    _keys = ["GOOGLE_PLACES_API_KEY", "ANTHROPIC_API_KEY"]
+    # Only the selected AI provider's key matters. The other provider is paused, so its missing key is not a warning.
+    from services.ai_provider import AIProviderError, active_provider, key_name
+    try:
+        ai_key = key_name(active_provider())
+        logging.warning("Startup config: AI_PROVIDER = %s", active_provider())
+    except AIProviderError as exc:
+        logging.warning("Startup config: %s", exc)
+        ai_key = None
+    _keys = ["GOOGLE_PLACES_API_KEY"] + ([ai_key] if ai_key else [])
     for k in _keys:
         status = "configured" if os.getenv(k) else "MISSING — feature will be unavailable"
         logging.warning("Startup config: %s = %s", k, status)
