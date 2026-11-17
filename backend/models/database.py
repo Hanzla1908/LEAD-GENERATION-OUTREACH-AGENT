@@ -477,14 +477,18 @@ def update_draft_content(draft_id: int, subject: str | None = None, body: str | 
     new_subject = subject if subject is not None else current["subject"]
     new_body = body if body is not None else current["body"]
     changed = new_subject != current["subject"] or new_body != current["body"]
+    # edited_at is a text column (migration 0011). Postgres will not mix a timestamp and text in one CASE,
+    # so the value is passed in as text, in the same format CURRENT_TIMESTAMP gives on SQLite.
+    edited_now = utc_now().strftime("%Y-%m-%d %H:%M:%S")
     execute(
         "UPDATE email_drafts SET subject = :subject, body = :body, updated_at = CURRENT_TIMESTAMP, "
-        "edited_at = CASE WHEN :changed = 1 THEN CURRENT_TIMESTAMP ELSE edited_at END "
+        "edited_at = CASE WHEN :changed = 1 THEN :edited_now ELSE edited_at END "
         "WHERE id = :id AND workspace_id = :ws",
         {
             "subject": new_subject,
             "body": new_body,
             "changed": 1 if changed else 0,
+            "edited_now": edited_now,
             "id": draft_id,
             "ws": current_workspace(),
         },
