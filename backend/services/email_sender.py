@@ -83,6 +83,59 @@ class SmtpSender:
         return message_id
 
 
+BREVO_URL = "https://api.brevo.com/v3/smtp/email"
+
+
+class BrevoSender:
+    """Sends through Brevo's HTTPS API (port 443), which works from Vercel, where outbound SMTP is blocked.
+    Brevo's free plan allows sending from a single verified address, so no domain is needed."""
+
+    name = "brevo"
+
+    def __init__(self, api_key: str, from_email: str, from_name: str, transport: httpx.BaseTransport | None = None):
+        self.api_key = api_key
+        self.from_email = from_email
+        self.from_name = from_name
+        self.transport = transport
+
+    def send(self, to: str, subject: str, body: str, idempotency_key: str,
+             unsubscribe_url: str | None = None) -> str:
+        payload = {
+            "sender": {"name": self.from_name, "email": self.from_email},
+            "to": [{"email": to}],
+            "subject": subject,
+            "textContent": body,
+        }
+        if unsubscribe_url:
+            payload["headers"] = {
+                "List-Unsubscribe": f"<{unsubscribe_url}>",
+                "List-Unsubscribe-Post": "List-Unsubscribe=One-Click",
+            }
+        try:
+            with httpx.Client(timeout=30.0, transport=self.transport) as client:
+                response = client.post(
+                    BREVO_URL, json=payload,
+                    headers={"api-key": self.api_key, "accept": "application/json"},
+                )
+        except httpx.HTTPError as exc:
+            # The request may have reached Brevo, so the outcome is unknown and the message is never resent.
+            raise SendOutcomeUnknown(f"Brevo did not answer; the delivery outcome is unknown: {exc}") from exc
+        if response.status_code in (200, 201):
+            return str(response.json().get("messageId") or f"brevo-{idempotency_key}")
+        if response.status_code in (400, 401, 402, 403, 429):
+            # Refused before sending (bad key, invalid address, plan limit, rate limit): safe to retry later.
+            raise SendError(f"Brevo refused the message ({response.status_code}): {_brevo_error(response)}")
+        raise SendOutcomeUnknown(f"Brevo returned {response.status_code}; the delivery outcome is unknown.")
+
+
+def _brevo_error(response: httpx.Response) -> str:
+    try:
+        data = response.json()
+        return str(data.get("message") or data.get("code") or f"HTTP {response.status_code}")
+    except ValueError:
+        return f"HTTP {response.status_code}"
+
+
 class NodemailerSender:
     """Sends through the internal Node.js email service. The shared secret stays on the server."""
 
@@ -156,6 +209,16 @@ def get_sender():
         if "://" not in url:
             url = "http://" + url
         return NodemailerSender(url, secret)
+    if provider == "brevo":
+        api_key = os.getenv("BREVO_API_KEY", "").strip()
+        from_email = os.getenv("EMAIL_FROM", "").strip()
+        if not api_key or not from_email:
+            raise SendError("Brevo is selected but BREVO_API_KEY or EMAIL_FROM is not set.")
+        return BrevoSender(
+            api_key=api_key,
+            from_email=from_email,
+            from_name=os.getenv("EMAIL_FROM_NAME", "Outreach Team"),
+        )
     if provider == "smtp":
         host = os.getenv("SMTP_HOST", "").strip()
         from_email = os.getenv("EMAIL_FROM", "").strip()
