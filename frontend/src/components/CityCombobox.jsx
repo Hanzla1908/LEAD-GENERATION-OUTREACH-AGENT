@@ -110,6 +110,12 @@ export default function CityCombobox({
     return () => document.removeEventListener('mousedown', onPointerDown)
   }, [open])
 
+  // Keep the highlighted suggestion on screen while the arrow keys move through the list.
+  useEffect(() => {
+    if (!open) return
+    document.getElementById(`${baseId}-${active}`)?.scrollIntoView?.({ block: 'nearest' })
+  }, [active, open, baseId])
+
   async function showMore() {
     if (loadingMore || !hasMore) return
     const key = latestKey.current
