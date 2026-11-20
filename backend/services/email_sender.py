@@ -83,6 +83,120 @@ class SmtpSender:
         return message_id
 
 
+BREVO_URL = "https://api.brevo.com/v3/smtp/email"
+MAILJET_URL = "https://api.mailjet.com/v3.1/send"
+
+
+class MailjetSender:
+    """Sends through Mailjet's HTTPS API (port 443), which works from Vercel. Mailjet's API keys have no IP
+    allowlist, and its free plan needs only a verified sender address, so no domain is needed."""
+
+    name = "mailjet"
+
+    def __init__(self, api_key: str, api_secret: str, from_email: str, from_name: str,
+                 transport: httpx.BaseTransport | None = None):
+        self.api_key = api_key
+        self.api_secret = api_secret
+        self.from_email = from_email
+        self.from_name = from_name
+        self.transport = transport
+
+    def send(self, to: str, subject: str, body: str, idempotency_key: str,
+             unsubscribe_url: str | None = None) -> str:
+        message = {
+            "From": {"Email": self.from_email, "Name": self.from_name},
+            "To": [{"Email": to}],
+            "Subject": subject,
+            "TextPart": body,
+            "CustomID": idempotency_key[:64],
+        }
+        if unsubscribe_url:
+            message["Headers"] = {
+                "List-Unsubscribe": f"<{unsubscribe_url}>",
+                "List-Unsubscribe-Post": "List-Unsubscribe=One-Click",
+            }
+        try:
+            with httpx.Client(timeout=30.0, transport=self.transport) as client:
+                response = client.post(
+                    MAILJET_URL, json={"Messages": [message]},
+                    auth=(self.api_key, self.api_secret),
+                )
+        except httpx.HTTPError as exc:
+            # The request may have reached Mailjet, so the outcome is unknown and the message is never resent.
+            raise SendOutcomeUnknown(f"Mailjet did not answer; the delivery outcome is unknown: {exc}") from exc
+        if response.status_code in (400, 401, 403, 429):
+            # Refused before sending (bad key, invalid address, plan limit, rate limit): safe to retry later.
+            raise SendError(f"Mailjet refused the message ({response.status_code}): {_mailjet_error(response)}")
+        if response.status_code != 200:
+            raise SendOutcomeUnknown(f"Mailjet returned {response.status_code}; the delivery outcome is unknown.")
+        result = response.json()["Messages"][0]
+        if result.get("Status") != "success":
+            raise SendError(f"Mailjet did not accept the message: {_mailjet_error(response)}")
+        return str(result["To"][0]["MessageID"])
+
+
+def _mailjet_error(response: httpx.Response) -> str:
+    try:
+        data = response.json()
+        first = (data.get("Messages") or [{}])[0]
+        errors = first.get("Errors") or []
+        if errors:
+            return str(errors[0].get("ErrorMessage") or errors[0])
+        return str(data.get("ErrorMessage") or f"HTTP {response.status_code}")
+    except (ValueError, AttributeError, IndexError):
+        return f"HTTP {response.status_code}"
+
+
+class BrevoSender:
+    """Sends through Brevo's HTTPS API (port 443), which works from Vercel, where outbound SMTP is blocked.
+    Brevo's free plan allows sending from a single verified address, so no domain is needed."""
+
+    name = "brevo"
+
+    def __init__(self, api_key: str, from_email: str, from_name: str, transport: httpx.BaseTransport | None = None):
+        self.api_key = api_key
+        self.from_email = from_email
+        self.from_name = from_name
+        self.transport = transport
+
+    def send(self, to: str, subject: str, body: str, idempotency_key: str,
+             unsubscribe_url: str | None = None) -> str:
+        payload = {
+            "sender": {"name": self.from_name, "email": self.from_email},
+            "to": [{"email": to}],
+            "subject": subject,
+            "textContent": body,
+        }
+        if unsubscribe_url:
+            payload["headers"] = {
+                "List-Unsubscribe": f"<{unsubscribe_url}>",
+                "List-Unsubscribe-Post": "List-Unsubscribe=One-Click",
+            }
+        try:
+            with httpx.Client(timeout=30.0, transport=self.transport) as client:
+                response = client.post(
+                    BREVO_URL, json=payload,
+                    headers={"api-key": self.api_key, "accept": "application/json"},
+                )
+        except httpx.HTTPError as exc:
+            # The request may have reached Brevo, so the outcome is unknown and the message is never resent.
+            raise SendOutcomeUnknown(f"Brevo did not answer; the delivery outcome is unknown: {exc}") from exc
+        if response.status_code in (200, 201):
+            return str(response.json().get("messageId") or f"brevo-{idempotency_key}")
+        if response.status_code in (400, 401, 402, 403, 429):
+            # Refused before sending (bad key, invalid address, plan limit, rate limit): safe to retry later.
+            raise SendError(f"Brevo refused the message ({response.status_code}): {_brevo_error(response)}")
+        raise SendOutcomeUnknown(f"Brevo returned {response.status_code}; the delivery outcome is unknown.")
+
+
+def _brevo_error(response: httpx.Response) -> str:
+    try:
+        data = response.json()
+        return str(data.get("message") or data.get("code") or f"HTTP {response.status_code}")
+    except ValueError:
+        return f"HTTP {response.status_code}"
+
+
 class NodemailerSender:
     """Sends through the internal Node.js email service. The shared secret stays on the server."""
 
@@ -156,6 +270,28 @@ def get_sender():
         if "://" not in url:
             url = "http://" + url
         return NodemailerSender(url, secret)
+    if provider == "mailjet":
+        api_key = os.getenv("MAILJET_API_KEY", "").strip()
+        api_secret = os.getenv("MAILJET_API_SECRET", "").strip()
+        from_email = os.getenv("EMAIL_FROM", "").strip()
+        if not api_key or not api_secret or not from_email:
+            raise SendError("Mailjet is selected but MAILJET_API_KEY, MAILJET_API_SECRET or EMAIL_FROM is not set.")
+        return MailjetSender(
+            api_key=api_key,
+            api_secret=api_secret,
+            from_email=from_email,
+            from_name=os.getenv("EMAIL_FROM_NAME", "Outreach Team"),
+        )
+    if provider == "brevo":
+        api_key = os.getenv("BREVO_API_KEY", "").strip()
+        from_email = os.getenv("EMAIL_FROM", "").strip()
+        if not api_key or not from_email:
+            raise SendError("Brevo is selected but BREVO_API_KEY or EMAIL_FROM is not set.")
+        return BrevoSender(
+            api_key=api_key,
+            from_email=from_email,
+            from_name=os.getenv("EMAIL_FROM_NAME", "Outreach Team"),
+        )
     if provider == "smtp":
         host = os.getenv("SMTP_HOST", "").strip()
         from_email = os.getenv("EMAIL_FROM", "").strip()

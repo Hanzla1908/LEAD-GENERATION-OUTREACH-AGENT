@@ -406,7 +406,9 @@ button.metric:focus-visible { box-shadow: var(--focus); }
 .score { font-size: 13px; font-weight: 650; font-variant-numeric: tabular-nums; color: var(--text-2); }
 
 /* ── Tables ────────────────────────────────────────────────────────────────── */
-.table-wrap { overflow-x: auto; }
+/* position: relative makes the wrapper the containing block for absolutely positioned children (such as the
+   visually hidden header labels), so they are clipped by its scroll area instead of widening the whole page. */
+.table-wrap { position: relative; overflow-x: auto; max-width: 100%; }
 .table { width: 100%; border-collapse: separate; border-spacing: 0; font-size: 13px; }
 .table th {
   padding: 11px 14px; text-align: left; white-space: nowrap;
