@@ -34,6 +34,12 @@ export default function SearchSelect({
     return () => document.removeEventListener('mousedown', onPointerDown)
   }, [open])
 
+  // Keep the highlighted choice on screen while the arrow keys move through a long list such as the countries.
+  useEffect(() => {
+    if (!open) return
+    document.getElementById(`${baseId}-${activeIndex}`)?.scrollIntoView?.({ block: 'nearest' })
+  }, [activeIndex, open, baseId])
+
   function choose(item) {
     onChange(item.value)
     setOpen(false)
