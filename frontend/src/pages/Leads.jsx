@@ -566,7 +566,7 @@ export default function Leads({
       <Modal
         open={discoverOpen}
         title="Discover businesses"
-        description="Searches Google Places for businesses in Pakistan and saves new results. Places already saved are not duplicated."
+        description="Searches Google Places for businesses in the chosen country, state or city and saves new results. Places already saved are not duplicated."
         onClose={() => setDiscoverOpen(false)}
         size="md"
       >
@@ -575,14 +575,15 @@ export default function Leads({
           error={discoverError}
           notice={discoverNotice}
           industries={industries}
-          onSearch={async (city, category, limit, industry, countryCode, cityId) => {
+          onSearch={async (city, category, limit, industry, countryCode, cityId, stateCode, stateLabel) => {
             setDiscoverNotice('')
-            const count = await onDiscover(city, category, limit, industry, countryCode, cityId)
+            const count = await onDiscover(city, category, limit, industry, countryCode, cityId, stateCode, stateLabel)
             if (count === null) return
             if (count > 0) {
               setDiscoverOpen(false)
             } else {
-              setDiscoverNotice(`No businesses were found in ${city} for this type. Try another business type or city.`)
+              const where = city || stateLabel
+              setDiscoverNotice(`No businesses were found in ${where} for this type. Try another business type or city.`)
             }
           }}
         />

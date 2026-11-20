@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { Button, Icon } from './ui'
 import CityCombobox from './CityCombobox'
 import CountrySelect from './CountrySelect'
+import SearchSelect from './SearchSelect'
 import COUNTRIES from '../lib/countries.json'
 import { CUISINES, cuisineLabel } from '../lib/pakistan'
 import { cleanCityName, validateCity } from '../lib/cities'
@@ -30,8 +31,13 @@ function subcategoryOptions(industries, industry) {
 
 export default function DiscoveryForm({ onSearch, loading, error, notice, industries = [] }) {
   const [countryCode, setCountryCode] = useState(DEFAULT_COUNTRY)
+  // The states of the chosen country, from the city database. status is loading, ready or error.
+  const [states, setStates] = useState({ status: 'loading', items: [] })
+  const [statesAttempt, setStatesAttempt] = useState(0)
+  // The state chosen from the list, by its code. '' means all states.
+  const [stateCode, setStateCode] = useState('')
   const [cityText, setCityText] = useState('')
-  // The city picked from the city database: { id, name, admin1_name, ... }. Null when the city is typed by hand.
+  // The city picked from the city database: { id, name, admin1_name, admin1_code, ... }. Null when the city is typed by hand.
   const [pickedCity, setPickedCity] = useState(null)
   const [cityListReady, setCityListReady] = useState(null)
   const [industry, setIndustry] = useState(RESTAURANTS)
@@ -47,30 +53,63 @@ export default function DiscoveryForm({ onSearch, loading, error, notice, indust
     return () => { current = false }
   }, [])
 
+  // The states come from the city database for the chosen country. A country with none gets no state field.
+  useEffect(() => {
+    let current = true
+    setStates({ status: 'loading', items: [] })
+    api.getStates(countryCode)
+      .then((result) => { if (current) setStates({ status: 'ready', items: result.items ?? [] }) })
+      .catch(() => { if (current) setStates({ status: 'error', items: [] }) })
+    return () => { current = false }
+  }, [countryCode, statesAttempt])
+
   const industryOptions = industries.length > 0
     ? industries.map((item) => ({ value: item.key, label: item.name }))
     : [{ value: RESTAURANTS, label: 'Food & Beverage' }]
   const typeOptions = subcategoryOptions(industries, industry)
   const typeName = typeOptions.find((option) => option.value === category)?.label ?? typeOptions[0]?.label ?? ''
   const countryLabel = countryNameFor(countryCode)
+  const stateItems = states.items
+  const stateChoices = stateItems.map((item) => ({ value: item.code, label: item.name }))
+  // While the states load, or when they cannot be loaded, the field stays; a country with no states hides it.
+  const hasStates = states.status !== 'ready' || stateItems.length > 0
+  const activeState = hasStates ? stateCode : ''
+  const stateLabel = stateItems.find((item) => item.code === activeState)?.name ?? ''
+  const cityHint = activeState
+    ? `Pick a city in ${stateLabel}, or leave it empty to search the whole state.`
+    : `Pick a city from the list, or type any city in ${countryLabel}.`
 
-  // A picked city already comes from the database, so the typed-name rules do not apply to it.
-  const cityError = pickedCity ? '' : validateCity(cityText)
+  // A picked city already comes from the database, so the typed-name rules do not apply to it. With a state chosen,
+  // the city may be left empty, and the whole state is searched.
+  const cityEmptyAllowed = Boolean(activeState) && !cityText.trim()
+  const cityError = pickedCity || cityEmptyAllowed ? '' : validateCity(cityText)
   const limitError = validateLimit(limit)
   const cityShown = submitted ? cityError : ''
   const limitShown = submitted ? limitError : ''
   const cleanCity = pickedCity ? pickedCity.name : cleanCityName(cityText)
+  // The place named in the summary: the city with its state (or the city's own division when no state is chosen).
+  const placeName = [cleanCity, activeState ? stateLabel : pickedCity?.admin1_name].filter(Boolean).join(', ')
 
   function handleSubmit(event) {
     event.preventDefault()
     setSubmitted(true)
     if (cityError || limitError) return
-    onSearch(cleanCity, category, limit, industry, countryCode, pickedCity?.id ?? null)
+    onSearch(cleanCity || null, category, limit, industry, countryCode, pickedCity?.id ?? null, activeState || null, stateLabel)
   }
 
-  // A city belongs to one country. Changing the country clears the city, so it is never searched in the wrong country.
+  // A city belongs to one country. Changing the country resets the state and the city, so neither is searched in the
+  // wrong country.
   function handleCountryChange(code) {
     setCountryCode(code)
+    setStateCode('')
+    setCityText('')
+    setPickedCity(null)
+  }
+
+  // Changing the state resets the city, which may not be in the new state. A choice that does not change is ignored.
+  function handleStateChange(code) {
+    if (code === stateCode) return
+    setStateCode(code)
     setCityText('')
     setPickedCity(null)
   }
@@ -84,6 +123,8 @@ export default function DiscoveryForm({ onSearch, loading, error, notice, indust
   function handleCityPick(city) {
     setCityText(city.name)
     setPickedCity(city)
+    // A picked city sets the state it is in, so the state field and the search agree.
+    if (stateItems.some((item) => item.code === city.admin1_code)) setStateCode(city.admin1_code)
   }
 
   function handleIndustryChange(value) {
@@ -106,6 +147,39 @@ export default function DiscoveryForm({ onSearch, loading, error, notice, indust
         <span className="field-hint" id="discover-country-help">Results come from Google Places for this country.</span>
       </div>
 
+      {hasStates && (
+        <div className="field">
+          <label className="field-label" htmlFor="discover-state">State</label>
+          <SearchSelect
+            id="discover-state"
+            items={stateChoices}
+            value={activeState}
+            onChange={handleStateChange}
+            ariaLabel="State"
+            listLabel="States"
+            placeholder={states.status === 'loading' ? 'Loading states…' : 'Search a state or region'}
+            clearLabel="All states"
+            noMatchText={(query) => `No state matches “${query}”.`}
+            disabled={loading || states.status !== 'ready'}
+            describedBy="discover-state-help"
+          />
+          {states.status === 'error' ? (
+            <>
+              <span className="field-error" id="discover-state-help" role="alert">
+                Could not load the states of {countryLabel}.
+              </span>
+              <Button type="button" variant="secondary" onClick={() => setStatesAttempt((n) => n + 1)} disabled={loading}>
+                Try again
+              </Button>
+            </>
+          ) : (
+            <span className="field-hint" id="discover-state-help">
+              {states.status === 'loading' ? 'Loading states…' : 'Limits the search and the city list to one state or region.'}
+            </span>
+          )}
+        </div>
+      )}
+
       <div className="field">
         <span className="field-label">City</span>
         <CityCombobox
@@ -115,6 +189,8 @@ export default function DiscoveryForm({ onSearch, loading, error, notice, indust
           onSelect={handleCityPick}
           countryCode={countryCode}
           countryName={countryLabel}
+          admin1={activeState}
+          areaName={activeState ? stateLabel : null}
           cityListReady={cityListReady}
           disabled={loading}
           invalid={Boolean(cityShown)}
@@ -122,7 +198,7 @@ export default function DiscoveryForm({ onSearch, loading, error, notice, indust
         />
         {cityShown
           ? <span className="field-error" id="discover-city-help" role="alert">{cityShown}</span>
-          : <span className="field-hint" id="discover-city-help">Pick a city from the list, or type any city in {countryLabel}.</span>}
+          : <span className="field-hint" id="discover-city-help">{cityHint}</span>}
         {cityListReady && (
           <span className="field-hint city-credit">
             City data © <a href="https://www.geonames.org/" target="_blank" rel="noreferrer">GeoNames</a>, CC BY 4.0.
@@ -181,12 +257,12 @@ export default function DiscoveryForm({ onSearch, loading, error, notice, indust
           : <span className="field-hint" id="discover-limit-help">Up to {MAX_RESULTS} per search. Google returns at most {MAX_RESULTS}.</span>}
       </div>
 
-      {cleanCity && !cityError && (
+      {(cleanCity || activeState) && !cityError && (
         <div className="notice notice-info span-full">
           <Icon name="search" size={16} />
           <div>
             Searching <strong>{industry === RESTAURANTS ? cuisineLabel(category) : typeName}</strong> in{' '}
-            <strong>{cleanCity}{pickedCity?.admin1_name ? `, ${pickedCity.admin1_name}` : ''}, {countryLabel}</strong>.
+            <strong>{placeName}, {countryLabel}</strong>.
             Results match the search; Google Places does not confirm what each business offers.
           </div>
         </div>

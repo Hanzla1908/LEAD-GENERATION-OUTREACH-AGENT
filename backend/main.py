@@ -545,16 +545,29 @@ async def discover_restaurants(request: DiscoveryRequest, actor: dict = OPERATE)
     subcategory = industries.get_subcategory(request.industry, request.subcategory)
     # The country name comes from the registry for the code the user chose. The provider receives the code as its region.
     country_name = country_registry.country_name(request.country_code)
-    # A city picked from the city database must belong to the chosen country. Its database name is what gets searched.
+    state_name = geonames.state_name(request.country_code, request.state) if request.state else None
+    if request.state and state_name is None:
+        raise HTTPException(status_code=422, detail="Unknown state for this country. Choose a state from the list.")
+    # A city picked from the city database must belong to the chosen country and, when a state is chosen, to that
+    # state. Its database name is what gets searched.
     city_name = request.city
     if request.city_id is not None:
         picked = geonames.city_by_id(request.city_id)
         if picked is None or picked["country_code"] != request.country_code:
             raise HTTPException(status_code=422, detail=f"That city is not in {country_name}. Pick it again from the list.")
+        if request.state and picked["admin1_code"] != request.state:
+            raise HTTPException(status_code=422, detail=f"That city is not in {state_name}. Pick it again from the list.")
         city_name = picked["name"]
-    query, included_type = build_query(request.industry, request.subcategory, city_name, country_name)
+    # The search names the city and its state when both are given, or only the state for a state-wide search.
+    if request.state:
+        location = ", ".join(part for part in (city_name, state_name) if part)
+    else:
+        location = city_name
+    # The saved lead's city is the city, or the state for a state-wide search.
+    place_label = city_name or state_name
+    query, included_type = build_query(request.industry, request.subcategory, location, country_name)
     if demo_mode_enabled():
-        places = demo_places(city_name, request.subcategory, limit, industry=request.industry,
+        places = demo_places(place_label, request.subcategory, limit, industry=request.industry,
                              subcategory_name=subcategory["name"], country_code=request.country_code,
                              country_name=country_name)
     else:
@@ -575,9 +588,10 @@ async def discover_restaurants(request: DiscoveryRequest, actor: dict = OPERATE)
     for place in places:
         place["industry"] = request.industry
         place["subcategory"] = request.subcategory
-    saved = save_restaurants(places, city=city_name, country=country_name, country_code=request.country_code)
+    saved = save_restaurants(places, city=place_label, country=country_name, country_code=request.country_code)
     audit.record(actor["id"], "lead.discovered", "search", None,
-                 f"country={request.country_code}; industry={request.industry}; city={city_name}; "
+                 f"country={request.country_code}; industry={request.industry}; city={place_label}; "
+                 f"state={request.state or '-'}; "
                  f"category={request.subcategory}; results={len(saved)}")
     return saved
 
@@ -598,17 +612,35 @@ def geo_status():
 def geo_city_search(country_code: str, response: Response,
                     q: str = Query(default="", max_length=60),
                     limit: int = Query(default=geonames.DEFAULT_LIMIT, ge=1, le=geonames.MAX_LIMIT),
-                    offset: int = Query(default=0, ge=0, le=geonames.MAX_OFFSET)):
+                    offset: int = Query(default=0, ge=0, le=geonames.MAX_OFFSET),
+                    admin1: str = Query(default="", max_length=20)):
     """Cities of one country whose name or alternate name starts with q, one page at a time.
 
-    Only that country's cities are ever returned. An empty q returns the most populated cities. Suggestions only: a
-    typed city that is not in the database is still searched as typed.
+    Only that country's cities are ever returned. An empty q returns the most populated cities. admin1, when given, is
+    a state code of that country (for example "04" for Punjab) and limits the cities to that state. Suggestions
+    only: a typed city that is not in the database is still searched as typed.
+    """
+    code = country_registry.normalize_code(country_code)
+    if not country_registry.is_known_country(code):
+        raise HTTPException(status_code=422, detail="Unknown country code.")
+    if admin1 and geonames.state_name(code, admin1) is None:
+        raise HTTPException(status_code=422, detail="Unknown state for this country.")
+    response.headers["Cache-Control"] = "private, max-age=300"
+    return geonames.search_cities(code, q, limit=limit, offset=offset, admin1=admin1 or None)
+
+
+@app.get("/geo/countries/{country_code}/states", dependencies=[READ])
+def geo_state_list(country_code: str, response: Response):
+    """The states (first-level divisions) of one country that have cities in the database, by name.
+
+    An empty list means the country has no such divisions in the data, so the interface skips the state field and
+    lets the city be chosen directly. The list is read from GeoNames admin1CodesASCII.txt, never typed in.
     """
     code = country_registry.normalize_code(country_code)
     if not country_registry.is_known_country(code):
         raise HTTPException(status_code=422, detail="Unknown country code.")
     response.headers["Cache-Control"] = "private, max-age=300"
-    return geonames.search_cities(code, q, limit=limit, offset=offset)
+    return geonames.list_states(code)
 
 
 @app.get("/industries", dependencies=[READ])

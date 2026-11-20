@@ -376,26 +376,50 @@ export function createFakeBackend(seed = {}) {
   // The database rows are a small sample: the five required countries plus enough Pakistani cities to page through.
   const COUNTRY_NAMES = { PK: 'Pakistan', US: 'United States', GB: 'United Kingdom', AE: 'United Arab Emirates', AU: 'Australia', CA: 'Canada' }
   const PAKISTAN_CITY_LIST = ['Abbottabad', 'Bahawalpur', 'Faisalabad', 'Gujranwala', 'Hyderabad', 'Islamabad', 'Jhelum', 'Karachi', 'Lahore', 'Mardan', 'Multan', 'Peshawar', 'Quetta', 'Rahim Yar Khan', 'Rawalpindi', 'Sargodha', 'Sheikhupura', 'Sialkot', 'Sukkur']
+  // State names and GeoNames admin1 codes as the backend stores them (services/states.py). Cities not listed in
+  // PK_STATE_CODES are in Punjab.
+  const STATE_NAMES = { '02': 'Balochistan', '03': 'Khyber Pakhtunkhwa', '04': 'Punjab', '05': 'Sindh', '06': 'Azad Jammu & Kashmir', '07': 'Gilgit-Baltistan', '08': 'Islamabad Capital Territory' }
+  const PK_STATE_CODES = { Quetta: '02', Abbottabad: '03', Mardan: '03', Peshawar: '03', Hyderabad: '05', Karachi: '05', Sukkur: '05', Islamabad: '08' }
+  const pakistanState = (name) => {
+    const code = PK_STATE_CODES[name] ?? '04'
+    return { admin1: code === '08' ? 'Islamabad' : STATE_NAMES[code], admin1Code: code }
+  }
   const GEO_CITIES = [
-    { id: 1172451, country: 'PK', name: 'Lahore', admin1: 'Punjab', population: 13004135, alt: [] },
-    { id: 1179400, country: 'PK', name: 'Faisalabad', admin1: 'Punjab', population: 3800193, alt: ['Lyallpur'] },
+    { id: 1172451, country: 'PK', name: 'Lahore', admin1: 'Punjab', admin1Code: '04', population: 13004135, alt: [] },
+    { id: 1179400, country: 'PK', name: 'Faisalabad', admin1: 'Punjab', admin1Code: '04', population: 3800193, alt: ['Lyallpur'] },
     ...PAKISTAN_CITY_LIST
       .filter((name) => name !== 'Lahore' && name !== 'Faisalabad')
-      .map((name, index) => ({ id: 900000 + index, country: 'PK', name, admin1: null, population: 500000 - index * 1000, alt: [] })),
-    { id: 5128581, country: 'US', name: 'New York City', admin1: 'New York', population: 8804190, alt: ['NYC'] },
-    { id: 2643743, country: 'GB', name: 'London', admin1: 'England', population: 8961989, alt: [] },
-    { id: 6058560, country: 'CA', name: 'London', admin1: 'Ontario', population: 422324, alt: [] },
-    { id: 292223, country: 'AE', name: 'Dubai', admin1: 'Dubai', population: 3790000, alt: [] },
-    { id: 2147714, country: 'AU', name: 'Sydney', admin1: 'New South Wales', population: 5638830, alt: [] },
+      .map((name, index) => ({ id: 900000 + index, country: 'PK', name, ...pakistanState(name), population: 500000 - index * 1000, alt: [] })),
+    // Real GeoNames ids and admin1 codes (cities15000.txt, admin1CodesASCII.txt), as the backend stores them.
+    { id: 5128581, country: 'US', name: 'New York City', admin1: 'New York', admin1Code: 'NY', population: 8804190, alt: ['NYC'] },
+    { id: 5368361, country: 'US', name: 'Los Angeles', admin1: 'California', admin1Code: 'CA', population: 3820914, alt: [] },
+    { id: 5387428, country: 'US', name: 'Richmond', admin1: 'California', admin1Code: 'CA', population: 109708, alt: [] },
+    { id: 4781708, country: 'US', name: 'Richmond', admin1: 'Virginia', admin1Code: 'VA', population: 226610, alt: [] },
+    { id: 2643743, country: 'GB', name: 'London', admin1: 'England', admin1Code: 'ENG', population: 8961989, alt: [] },
+    { id: 6058560, country: 'CA', name: 'London', admin1: 'Ontario', admin1Code: '08', population: 422324, alt: [] },
+    { id: 292223, country: 'AE', name: 'Dubai', admin1: 'Dubai', admin1Code: '03', population: 3790000, alt: [] },
+    { id: 2147714, country: 'AU', name: 'Sydney', admin1: 'New South Wales', admin1Code: '02', population: 5638830, alt: [] },
+    // A country with no first-level divisions in the data: its cities get no state field.
+    { id: 1880252, country: 'SG', name: 'Singapore', admin1: null, admin1Code: null, population: 5638700, alt: [] },
   ]
 
   const foldText = (text) => String(text).normalize('NFKD').replace(/[̀-ͯ]/g, '')
     .replace(/[-'’.]/g, ' ').replace(/\s+/g, ' ').trim().toLowerCase()
 
-  // One country only. Main names rank above alternate-name matches, then the more populated city comes first.
-  function citySearch(code, q, limit, offset) {
+  // The states of a country that have cities in this sample, by name. Same rule as the backend's list.
+  function stateList(code) {
+    const byCode = new Map()
+    GEO_CITIES.filter((c) => c.country === code && c.admin1Code).forEach((c) => {
+      if (!byCode.has(c.admin1Code)) byCode.set(c.admin1Code, { code: c.admin1Code, name: c.admin1 })
+    })
+    return { items: [...byCode.values()].sort((a, b) => a.name.localeCompare(b.name)), source: 'geonames' }
+  }
+
+  // One country only, and one state when admin1 is given. Main names rank above alternate-name matches, then the more
+  // populated city comes first.
+  function citySearch(code, q, limit, offset, admin1 = '') {
     const needle = foldText(q)
-    const hits = GEO_CITIES.filter((c) => c.country === code).flatMap((c) => {
+    const hits = GEO_CITIES.filter((c) => c.country === code && (!admin1 || c.admin1Code === admin1)).flatMap((c) => {
       if (foldText(c.name).startsWith(needle)) return [{ c, alias: null, byName: 1 }]
       const alias = c.alt.find((a) => foldText(a).startsWith(needle))
       return alias ? [{ c, alias, byName: 0 }] : []
@@ -404,7 +428,8 @@ export function createFakeBackend(seed = {}) {
     const page = hits.slice(offset, offset + limit + 1)
     return {
       items: page.slice(0, limit).map(({ c, alias }) => ({
-        id: c.id, name: c.name, admin1_name: c.admin1, country_code: code, population: c.population, matched_alias: alias,
+        id: c.id, name: c.name, admin1_name: c.admin1, admin1_code: c.admin1Code ?? null, country_code: code,
+        population: c.population, matched_alias: alias,
       })),
       limit,
       offset,
@@ -419,31 +444,40 @@ export function createFakeBackend(seed = {}) {
     if (body.city_id != null && (!picked || picked.country !== countryCode)) {
       fail(422, `That city is not in ${COUNTRY_NAMES[countryCode] ?? countryCode}. Pick it again from the list.`)
     }
+    const stateCode = body.state ? String(body.state) : null
+    // The state must be one of the country's states in the sample, as the backend checks against its database.
+    const stateEntry = stateCode ? GEO_CITIES.find((c) => c.country === countryCode && c.admin1Code === stateCode) : null
+    if (stateCode && !stateEntry) fail(422, 'Unknown state for this country. Choose a state from the list.')
+    const stateLabel = stateEntry ? stateEntry.admin1 : null
+    if (picked && stateCode && picked.admin1Code !== stateCode) {
+      fail(422, `That city is not in ${stateLabel}. Pick it again from the list.`)
+    }
+    // A state-wide search has no city, so the state's name is the place searched.
     const city = picked ? picked.name : String(body.city ?? '').trim()
+    const where = city || stateLabel
     const limit = Number(body.limit ?? 10)
-    if (!city) fail(422, 'City is required.')
+    if (!where) fail(422, 'City is required.')
     if (!Number.isInteger(limit) || limit < 1 || limit > 60) fail(422, 'Choose between 1 and 60 results.')
     const countryName = COUNTRY_NAMES[countryCode] ?? countryCode
-    const record = { city, category: body.category ?? 'all', limit, country_code: countryCode }
+    const record = { city: city || null, category: body.category ?? 'all', limit, country_code: countryCode }
     if (picked) record.city_id = picked.id
+    if (stateCode) record.state = stateCode
     if (body.industry) record.industry = body.industry
     if (body.subcategory) record.subcategory = body.subcategory
     state.lastDiscover = record
-    const otherIndustry = body.industry && body.industry !== 'restaurants_food'
-    const noun = otherIndustry ? 'sample business' : 'sample business'
     const candidates = state.discoveryMode.demo_mode
       ? [1, 2, 3].map((i) => makeRestaurant({
-        name: `[DEMO] ${city} ${noun} ${i}`,
-        address: `${i} Main Road, ${city}, ${countryName}`,
-        city,
+        name: `[DEMO] ${where} sample business ${i}`,
+        address: `${i} Main Road, ${where}, ${countryName}`,
+        city: where,
         country_code: countryCode,
         country_name: countryName,
         source: 'demo',
         industry: body.industry ?? 'restaurants_food',
         subcategory: body.subcategory ?? null,
-        place_id: `demo-${countryCode.toLowerCase()}-${body.industry ?? ''}-${city.toLowerCase().replace(/\s+/g, '-')}-${i}`,
+        place_id: `demo-${countryCode.toLowerCase()}-${body.industry ?? ''}-${where.toLowerCase().replace(/\s+/g, '-')}-${i}`,
       }))
-      : (state.discoverCatalog[city] ?? []).map((r) => makeRestaurant(r))
+      : (state.discoverCatalog[where] ?? []).map((r) => makeRestaurant(r))
     const fresh = candidates
       .filter((c) => !state.restaurants.some((r) => r.place_id && r.place_id === c.place_id))
       .slice(0, limit)
@@ -1118,7 +1152,9 @@ export function createFakeBackend(seed = {}) {
     ['POST', /^\/auth\/register$/, ({ body }) => registerFake(body)],
     ['GET', /^\/industries$/, () => clone(INDUSTRY_OPTIONS)],
     ['GET', /^\/geo\/countries\/([A-Za-z]{2})\/cities$/, ({ params, query }) => citySearch(
-      params[0].toUpperCase(), query.get('q') ?? '', Number(query.get('limit') ?? 10), Number(query.get('offset') ?? 0))],
+      params[0].toUpperCase(), query.get('q') ?? '', Number(query.get('limit') ?? 10), Number(query.get('offset') ?? 0),
+      query.get('admin1') ?? '')],
+    ['GET', /^\/geo\/countries\/([A-Za-z]{2})\/states$/, ({ params }) => stateList(params[0].toUpperCase())],
     ['GET', /^\/geo\/status$/, () => ({
       loaded: true, city_count: GEO_CITIES.length, source: 'GeoNames', source_url: 'https://www.geonames.org/',
       licence: 'CC BY 4.0', attribution: 'City data © GeoNames (https://www.geonames.org/), licensed under CC BY 4.0.',

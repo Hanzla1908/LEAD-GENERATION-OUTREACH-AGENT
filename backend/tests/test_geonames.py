@@ -244,3 +244,73 @@ def test_pakistani_searches_by_typed_name_are_unchanged_when_the_database_is_loa
                                                    "category": "biryani", "limit": 1}).json()
     assert rows[0]["place_id"] == "demo-faisalabad-biryani-1"
     assert rows[0]["city"] == "Faisalabad"
+
+
+# ── States ────────────────────────────────────────────────────────────────
+
+PUNJAB = "04"  # GeoNames PK.04. Lahore and Faisalabad in the fixture are in Punjab.
+SINDH = "05"
+LAHORE_ID = 1172451
+
+
+def test_a_state_filter_returns_only_cities_of_that_state(loaded):
+    assert _names(search_cities("PK", "", admin1=PUNJAB)) == ["Lahore", "Faisalabad"]
+    assert _names(search_cities("PK", "Lah", admin1=PUNJAB)) == ["Lahore"]
+    assert search_cities("PK", "Lah", admin1=SINDH)["items"] == []  # the fixture has no Sindh city
+
+
+def test_a_state_filter_applies_to_alternate_names_too(loaded):
+    item = search_cities("PK", "Lyallpur", admin1=PUNJAB)["items"][0]
+    assert item["name"] == "Faisalabad" and item["matched_alias"] == "Lyallpur"
+    assert search_cities("PK", "Lyallpur", admin1="03")["items"] == []
+
+
+def test_state_results_are_cached_separately(loaded):
+    assert _names(search_cities("PK", "", admin1=PUNJAB)) == ["Lahore", "Faisalabad"]
+    assert search_cities("PK", "", admin1=SINDH)["items"] == []
+
+
+def test_each_city_says_which_state_it_is_in(loaded):
+    assert search_cities("PK", "Lahore")["items"][0]["admin1_code"] == PUNJAB
+
+
+def test_the_city_endpoint_checks_the_state_code_for_its_country(loaded, api):
+    assert _names(api.get("/geo/countries/PK/cities", params={"admin1": PUNJAB}).json()) == ["Lahore", "Faisalabad"]
+    assert api.get("/geo/countries/PK/cities", params={"admin1": "99"}).status_code == 422
+    assert api.get("/geo/countries/US/cities", params={"admin1": PUNJAB}).status_code == 422
+
+
+def test_a_state_wide_search_uses_the_state_as_the_location(api):
+    rows = api.post("/restaurants/discover", json={"country_code": "PK", "state": PUNJAB,
+                                                   "limit": 2}).json()
+    assert len(rows) == 2
+    assert all(r["city"] == "Punjab" and r["country_code"] == "PK" for r in rows)
+
+
+def test_a_picked_city_inside_the_state_is_searched_in_it(api):
+    rows = api.post("/restaurants/discover", json={"country_code": "PK", "city_id": LAHORE_ID,
+                                                   "state": PUNJAB, "limit": 1}).json()
+    assert rows[0]["city"] == "Lahore"
+
+
+def test_a_picked_city_outside_the_state_is_refused(api):
+    resp = api.post("/restaurants/discover", json={"country_code": "PK", "city_id": LAHORE_ID,
+                                                   "state": SINDH, "limit": 1})
+    assert resp.status_code == 422
+    assert "not in Sindh" in resp.json()["detail"]
+
+
+def test_a_typed_city_with_a_state_keeps_its_typed_name(api):
+    rows = api.post("/restaurants/discover", json={"country_code": "PK", "city": "Zanzibar Town",
+                                                   "state": PUNJAB, "limit": 1}).json()
+    assert rows[0]["city"] == "Zanzibar Town"
+
+
+def test_a_state_must_belong_to_the_chosen_country(api):
+    assert api.post("/restaurants/discover", json={"country_code": "PK", "state": "99", "limit": 1}).status_code == 422
+    assert api.post("/restaurants/discover", json={"country_code": "US", "state": PUNJAB,
+                                                   "city": "Austin", "limit": 1}).status_code == 422
+
+
+def test_an_empty_state_with_no_city_is_still_refused(api):
+    assert api.post("/restaurants/discover", json={"country_code": "PK", "state": "", "limit": 1}).status_code == 422

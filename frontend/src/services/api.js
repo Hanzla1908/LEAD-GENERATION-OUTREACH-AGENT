@@ -159,9 +159,16 @@ export function checkHealth() {
 }
 
 // City suggestions from the city database (GeoNames). One page of one country's cities; the country is always required.
-export function searchCities(countryCode, query = '', { limit = 10, offset = 0 } = {}) {
+// admin1 is an optional state code; when given, only that state's cities are returned.
+export function searchCities(countryCode, query = '', { limit = 10, offset = 0, admin1 = '' } = {}) {
   const params = new URLSearchParams({ q: query, limit: String(limit), offset: String(offset) })
+  if (admin1) params.set('admin1', admin1)
   return _get(`/geo/countries/${encodeURIComponent(countryCode)}/cities?${params.toString()}`)
+}
+
+// The states (first-level divisions) of one country that have cities in the database. Empty for a country with none.
+export function getStates(countryCode) {
+  return _get(`/geo/countries/${encodeURIComponent(countryCode)}/states`)
 }
 
 // Whether the city database is loaded, and the attribution to show with it.
@@ -176,11 +183,13 @@ export function getIndustries() {
 
 // industry and subcategory are optional. Without them the search is a restaurant search, as before.
 // cityId is the id of a city picked from the city database. Without it, city is searched as typed.
-export async function discoverRestaurants(city, category, limit, industry = null, subcategory = null, countryCode = 'PK', cityId = null) {
+// state is an optional state code. With a state and no city, the whole state is searched.
+export async function discoverRestaurants(city, category, limit, industry = null, subcategory = null, countryCode = 'PK', cityId = null, state = null) {
   const body = { city, category, limit, country_code: countryCode }
   if (industry) body.industry = industry
   if (subcategory) body.subcategory = subcategory
   if (cityId != null) body.city_id = cityId
+  if (state) body.state = state
   return _post('/restaurants/discover', body)
 }
 
