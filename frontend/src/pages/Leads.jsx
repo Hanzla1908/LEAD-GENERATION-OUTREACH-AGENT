@@ -566,7 +566,7 @@ export default function Leads({
       <Modal
         open={discoverOpen}
         title="Discover businesses"
-        description="Searches Google Places for businesses in Pakistan and saves new results. Places already saved are not duplicated."
+        description="Searches Google Places for businesses in the chosen country, state or city and saves new results. Places already saved are not duplicated."
         onClose={() => setDiscoverOpen(false)}
         size="md"
       >
