@@ -4,6 +4,7 @@ import { ActionMenu, Badge, Button, ConfirmDialog, EmailBadge, EmptyState, Icon,
 import DiscoveryForm from '../components/DiscoveryForm'
 import CampaignSetupDialog from '../components/CampaignSetupDialog'
 import { cityFromAddress, timeAgo } from '../lib/format'
+import { provinceName } from '../lib/pakistan'
 import ConversationHistory from '../components/ConversationHistory'
 
 const PAGE_SIZE = 10
@@ -575,14 +576,15 @@ export default function Leads({
           error={discoverError}
           notice={discoverNotice}
           industries={industries}
-          onSearch={async (city, category, limit, industry, countryCode, cityId) => {
+          onSearch={async (city, category, limit, industry, countryCode, cityId, province) => {
             setDiscoverNotice('')
-            const count = await onDiscover(city, category, limit, industry, countryCode, cityId)
+            const count = await onDiscover(city, category, limit, industry, countryCode, cityId, province)
             if (count === null) return
             if (count > 0) {
               setDiscoverOpen(false)
             } else {
-              setDiscoverNotice(`No businesses were found in ${city} for this type. Try another business type or city.`)
+              const where = city || provinceName(province)
+              setDiscoverNotice(`No businesses were found in ${where} for this type. Try another business type or city.`)
             }
           }}
         />

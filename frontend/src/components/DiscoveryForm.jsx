@@ -3,12 +3,14 @@ import { Button, Icon } from './ui'
 import CityCombobox from './CityCombobox'
 import CountrySelect from './CountrySelect'
 import COUNTRIES from '../lib/countries.json'
-import { CUISINES, cuisineLabel } from '../lib/pakistan'
+import { CUISINES, PROVINCES, cuisineLabel, provinceName } from '../lib/pakistan'
 import { cleanCityName, validateCity } from '../lib/cities'
 import * as api from '../services/api'
 
 const MAX_RESULTS = 60
 const DEFAULT_COUNTRY = 'PK'
+// Provinces are listed for Pakistan only (PROVINCES in lib/pakistan.js).
+const PROVINCE_COUNTRY = 'PK'
 const RESTAURANTS = 'restaurants_food'
 
 function validateLimit(limit) {
@@ -30,8 +32,10 @@ function subcategoryOptions(industries, industry) {
 
 export default function DiscoveryForm({ onSearch, loading, error, notice, industries = [] }) {
   const [countryCode, setCountryCode] = useState(DEFAULT_COUNTRY)
+  // The province chosen from PROVINCES, by its code. '' means all provinces.
+  const [provinceCode, setProvinceCode] = useState('')
   const [cityText, setCityText] = useState('')
-  // The city picked from the city database: { id, name, admin1_name, ... }. Null when the city is typed by hand.
+  // The city picked from the city database: { id, name, admin1_name, admin1_code, ... }. Null when the city is typed by hand.
   const [pickedCity, setPickedCity] = useState(null)
   const [cityListReady, setCityListReady] = useState(null)
   const [industry, setIndustry] = useState(RESTAURANTS)
@@ -53,26 +57,49 @@ export default function DiscoveryForm({ onSearch, loading, error, notice, indust
   const typeOptions = subcategoryOptions(industries, industry)
   const typeName = typeOptions.find((option) => option.value === category)?.label ?? typeOptions[0]?.label ?? ''
   const countryLabel = countryNameFor(countryCode)
+  const hasProvinces = countryCode === PROVINCE_COUNTRY
+  // A province only applies to the country that lists provinces, so a stale choice is never sent for another country.
+  const activeProvince = hasProvinces ? provinceCode : ''
+  const activeProvinceName = provinceName(activeProvince)
+  const cityHint = activeProvince
+    ? `Pick a city in ${activeProvinceName}, or leave it empty to search the whole province.`
+    : `Pick a city from the list, or type any city in ${countryLabel}.`
 
-  // A picked city already comes from the database, so the typed-name rules do not apply to it.
-  const cityError = pickedCity ? '' : validateCity(cityText)
+  // A picked city already comes from the database, so the typed-name rules do not apply to it. With a province chosen,
+  // the city may be left empty, and the whole province is searched.
+  const cityEmptyAllowed = Boolean(activeProvince) && !cityText.trim()
+  const cityError = pickedCity || cityEmptyAllowed ? '' : validateCity(cityText)
   const limitError = validateLimit(limit)
   const cityShown = submitted ? cityError : ''
   const limitShown = submitted ? limitError : ''
   const cleanCity = pickedCity ? pickedCity.name : cleanCityName(cityText)
+  // The place named in the summary: the city with its province (or the city's own division when no province is chosen).
+  const placeName = [cleanCity, activeProvince ? activeProvinceName : pickedCity?.admin1_name].filter(Boolean).join(', ')
 
   function handleSubmit(event) {
     event.preventDefault()
     setSubmitted(true)
     if (cityError || limitError) return
-    onSearch(cleanCity, category, limit, industry, countryCode, pickedCity?.id ?? null)
+    onSearch(cleanCity || null, category, limit, industry, countryCode, pickedCity?.id ?? null, activeProvince || null)
   }
 
-  // A city belongs to one country. Changing the country clears the city, so it is never searched in the wrong country.
+  // A city belongs to one country. Changing the country clears the city and the province, so neither is searched in the
+  // wrong country.
   function handleCountryChange(code) {
     setCountryCode(code)
+    setProvinceCode('')
     setCityText('')
     setPickedCity(null)
+  }
+
+  // Switching to another province clears a picked city that is not in it, since that city is no longer valid. A typed
+  // city is kept, as it is searched as typed.
+  function handleProvinceChange(code) {
+    setProvinceCode(code)
+    if (pickedCity && code && pickedCity.admin1_code !== code) {
+      setCityText('')
+      setPickedCity(null)
+    }
   }
 
   // Typing after a pick means the user is entering a city by hand, so the picked id is dropped.
@@ -84,6 +111,10 @@ export default function DiscoveryForm({ onSearch, loading, error, notice, indust
   function handleCityPick(city) {
     setCityText(city.name)
     setPickedCity(city)
+    // A picked city sets the province it is in, so the province list and the search agree.
+    if (hasProvinces && PROVINCES.some((province) => province.code === city.admin1_code)) {
+      setProvinceCode(city.admin1_code)
+    }
   }
 
   function handleIndustryChange(value) {
@@ -106,6 +137,26 @@ export default function DiscoveryForm({ onSearch, loading, error, notice, indust
         <span className="field-hint" id="discover-country-help">Results come from Google Places for this country.</span>
       </div>
 
+      {hasProvinces && (
+        <div className="field">
+          <label className="field-label" htmlFor="discover-province">Province / State</label>
+          <select
+            id="discover-province"
+            className="select"
+            value={provinceCode}
+            onChange={(event) => handleProvinceChange(event.target.value)}
+            disabled={loading}
+            aria-describedby="discover-province-help"
+          >
+            <option value="">All provinces</option>
+            {PROVINCES.map((province) => (
+              <option key={province.code} value={province.code}>{province.name}</option>
+            ))}
+          </select>
+          <span className="field-hint" id="discover-province-help">Limits the search and the city list to one province.</span>
+        </div>
+      )}
+
       <div className="field">
         <span className="field-label">City</span>
         <CityCombobox
@@ -115,6 +166,8 @@ export default function DiscoveryForm({ onSearch, loading, error, notice, indust
           onSelect={handleCityPick}
           countryCode={countryCode}
           countryName={countryLabel}
+          admin1={activeProvince}
+          areaName={activeProvince ? activeProvinceName : null}
           cityListReady={cityListReady}
           disabled={loading}
           invalid={Boolean(cityShown)}
@@ -122,7 +175,7 @@ export default function DiscoveryForm({ onSearch, loading, error, notice, indust
         />
         {cityShown
           ? <span className="field-error" id="discover-city-help" role="alert">{cityShown}</span>
-          : <span className="field-hint" id="discover-city-help">Pick a city from the list, or type any city in {countryLabel}.</span>}
+          : <span className="field-hint" id="discover-city-help">{cityHint}</span>}
         {cityListReady && (
           <span className="field-hint city-credit">
             City data © <a href="https://www.geonames.org/" target="_blank" rel="noreferrer">GeoNames</a>, CC BY 4.0.
@@ -181,12 +234,12 @@ export default function DiscoveryForm({ onSearch, loading, error, notice, indust
           : <span className="field-hint" id="discover-limit-help">Up to {MAX_RESULTS} per search. Google returns at most {MAX_RESULTS}.</span>}
       </div>
 
-      {cleanCity && !cityError && (
+      {(cleanCity || activeProvince) && !cityError && (
         <div className="notice notice-info span-full">
           <Icon name="search" size={16} />
           <div>
             Searching <strong>{industry === RESTAURANTS ? cuisineLabel(category) : typeName}</strong> in{' '}
-            <strong>{cleanCity}{pickedCity?.admin1_name ? `, ${pickedCity.admin1_name}` : ''}, {countryLabel}</strong>.
+            <strong>{placeName}, {countryLabel}</strong>.
             Results match the search; Google Places does not confirm what each business offers.
           </div>
         </div>

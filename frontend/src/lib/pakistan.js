@@ -8,6 +8,22 @@ export const CITIES = [
   'Sheikhupura', 'Jhelum',
 ]
 
+// Provinces and territories of Pakistan, alphabetical. The code is the GeoNames admin1 code stored with each city and
+// checked by the backend (backend/services/provinces.py), so both sides agree on which cities belong to which province.
+export const PROVINCES = [
+  { code: '06', name: 'Azad Jammu & Kashmir' },
+  { code: '02', name: 'Balochistan' },
+  { code: '07', name: 'Gilgit-Baltistan' },
+  { code: '08', name: 'Islamabad Capital Territory' },
+  { code: '03', name: 'Khyber Pakhtunkhwa' },
+  { code: '04', name: 'Punjab' },
+  { code: '05', name: 'Sindh' },
+]
+
+export function provinceName(code) {
+  return PROVINCES.find((province) => province.code === code)?.name ?? ''
+}
+
 export const CUISINES = [
   { value: 'all', label: 'All businesses' },
   { value: 'desi', label: 'Desi / Pakistani' },

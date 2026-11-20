@@ -29,6 +29,7 @@ function useHashValue() {
   return hash
 }
 import { pendingActions, summarize } from './lib/insights'
+import { provinceName } from './lib/pakistan'
 import { readDensity } from './pages/Settings'
 import Overview from './pages/Overview'
 import Leads from './pages/Leads'
@@ -185,15 +186,17 @@ function Workspace({ user, workspace, workspaces, onSwitchWorkspace, onSignOut }
   }, [route, loadDrafts, toast])
 
   // Restaurant searches are sent exactly as before. Other industries also send their industry and subcategory.
-  const discover = async (city, category, limit, industry = null, countryCode = 'PK', cityId = null) => {
+  // province is an optional province code. A province-wide search has no city, so its place is the province's name.
+  const discover = async (city, category, limit, industry = null, countryCode = 'PK', cityId = null, province = null) => {
     setDiscoverError('')
     setBusy((prev) => new Set(prev).add('discover'))
     const other = industry && industry !== 'restaurants_food' ? industry : null
+    const where = city || provinceName(province)
     try {
-      const found = await api.discoverRestaurants(city, category, limit, other, other ? category : null, countryCode, cityId)
+      const found = await api.discoverRestaurants(city, category, limit, other, other ? category : null, countryCode, cityId, province)
       await loadRestaurants()
-      if (found.length > 0 && other) toast(`Found ${found.length} business${found.length === 1 ? '' : 'es'} in ${city}.`)
-      else if (found.length > 0) toast(`Found ${found.length} business${found.length === 1 ? '' : 'es'} in ${city}.`)
+      if (found.length > 0 && other) toast(`Found ${found.length} business${found.length === 1 ? '' : 'es'} in ${where}.`)
+      else if (found.length > 0) toast(`Found ${found.length} business${found.length === 1 ? '' : 'es'} in ${where}.`)
       return found.length
     } catch (err) {
       setDiscoverError(err.message || 'The search failed. Try again.')

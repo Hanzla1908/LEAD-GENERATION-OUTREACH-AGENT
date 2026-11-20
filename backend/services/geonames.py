@@ -90,45 +90,54 @@ def imported_city_count(country_code: str | None = None) -> int:
     return int(row["n"]) if row else 0
 
 
-def search_cities(country_code: str, query: str | None = "", limit: int = DEFAULT_LIMIT, offset: int = 0) -> dict:
+def search_cities(country_code: str, query: str | None = "", limit: int = DEFAULT_LIMIT, offset: int = 0,
+                  admin1: str | None = None) -> dict:
     """Cities in one country whose name (or an alternate name) starts with the query.
 
-    With an empty query the most populated cities come first. Returns:
+    With an empty query the most populated cities come first. With admin1 (a province code such as "04"), only the
+    cities of that province are returned. Returns:
       {"items": [...], "limit": n, "offset": n, "has_more": bool, "source": "geonames" | "fallback"}
-    Each item has id, name, admin1_name, country_code, population, and matched_alias (set when the query matched an
-    alternate name instead of the main name).
+    Each item has id, name, admin1_name, admin1_code, country_code, population, and matched_alias (set when the query
+    matched an alternate name instead of the main name).
     """
     code = countries.normalize_code(country_code)
     limit = _clamp_limit(limit)
     offset = _clamp_offset(offset)
     needle = normalize_search(query)[:MAX_QUERY_LENGTH]
-    key = (code, needle, limit, offset)
+    key = (code, needle, limit, offset, admin1 or "")
     cached = _cache_get(key)
     if cached is not None:
         return cached
 
     if imported_city_count(code) == 0 and code == "PK":
-        result = _fallback_pakistan(needle, limit, offset)
+        # The built-in list has no provinces, so a province choice cannot be answered from it.
+        result = (_page([], limit, offset, "PK", source="fallback") if admin1
+                  else _fallback_pakistan(needle, limit, offset))
     else:
-        result = _search_imported(code, needle, limit, offset)
+        result = _search_imported(code, needle, limit, offset, admin1)
     _cache_put(key, result)
     return result
 
 
-def _search_imported(code: str, needle: str, limit: int, offset: int) -> dict:
+def _search_imported(code: str, needle: str, limit: int, offset: int, admin1: str | None = None) -> dict:
+    # The province condition is added only when a province is given. Its value is a bound parameter; the SQL text is
+    # fixed.
+    province_params = {"a1": admin1} if admin1 else {}
+    city_province = " AND admin1_code = :a1" if admin1 else ""
+    joined_province = " AND c.admin1_code = :a1" if admin1 else ""
     if not needle:
         rows = fetch_all(
-            "SELECT id, name, admin1_name, population, NULL AS matched_alias FROM geo_cities "
-            "WHERE country_code = :cc ORDER BY population DESC, name ASC LIMIT :lim OFFSET :off",
-            {"cc": code, "lim": limit + 1, "off": offset},
+            "SELECT id, name, admin1_name, admin1_code, population, NULL AS matched_alias FROM geo_cities "
+            f"WHERE country_code = :cc{city_province} ORDER BY population DESC, name ASC LIMIT :lim OFFSET :off",
+            {"cc": code, "lim": limit + 1, "off": offset, **province_params},
         )
     else:
         # Main names and alternate names are scanned as prefix ranges on the indexed search_name column. Rows are
         # grouped per city so each city appears once. An exact match on the main name ranks first, then cities whose
-        # main name matches, then by population.
+        # main name matches, then by population. The province condition is applied to the joined city.
         rows = fetch_all(
-            """
-            SELECT c.id, c.name, c.admin1_name, c.population,
+            f"""
+            SELECT c.id, c.name, c.admin1_name, c.admin1_code, c.population,
                    MAX(m.by_name) AS by_name, MAX(m.is_exact) AS is_exact,
                    MIN(CASE WHEN m.by_name = 0 THEN m.alt_text END) AS matched_alias
             FROM (
@@ -140,12 +149,13 @@ def _search_imported(code: str, needle: str, limit: int, offset: int) -> dict:
                 FROM geo_city_alternate_names a
                 WHERE a.country_code = :cc AND a.search_name >= :lo AND a.search_name < :hi
             ) m
-            JOIN geo_cities c ON c.id = m.id
-            GROUP BY c.id, c.name, c.admin1_name, c.population
+            JOIN geo_cities c ON c.id = m.id{joined_province}
+            GROUP BY c.id, c.name, c.admin1_name, c.admin1_code, c.population
             ORDER BY is_exact DESC, by_name DESC, c.population DESC, c.name ASC
             LIMIT :lim OFFSET :off
             """,
-            {"cc": code, "q": needle, "lo": needle, "hi": needle + _HIGH, "lim": limit + 1, "off": offset},
+            {"cc": code, "q": needle, "lo": needle, "hi": needle + _HIGH, "lim": limit + 1, "off": offset,
+             **province_params},
         )
     return _page(rows, limit, offset, code, source="geonames")
 
@@ -155,7 +165,8 @@ def _fallback_pakistan(needle: str, limit: int, offset: int) -> dict:
     names = sorted(PAKISTAN_CITIES, key=str.casefold)
     matches = [name for name in names if not needle or normalize_search(name).startswith(needle)]
     window = matches[offset: offset + limit + 1]
-    rows = [{"id": None, "name": name, "admin1_name": None, "population": None, "matched_alias": None}
+    rows = [{"id": None, "name": name, "admin1_name": None, "admin1_code": None, "population": None,
+             "matched_alias": None}
             for name in window]
     return _page(rows, limit, offset, "PK", source="fallback")
 
@@ -167,6 +178,7 @@ def _page(rows: list[dict], limit: int, offset: int, code: str, source: str) -> 
             "id": row["id"],
             "name": row["name"],
             "admin1_name": row["admin1_name"],
+            "admin1_code": row["admin1_code"],
             "country_code": code,
             "population": row["population"],
             # An alias is shown only when the query matched no main name for this city.
@@ -179,7 +191,7 @@ def _page(rows: list[dict], limit: int, offset: int, code: str, source: str) -> 
 
 def city_by_id(city_id: int) -> dict | None:
     return fetch_one(
-        "SELECT id, country_code, name, admin1_name, population FROM geo_cities WHERE id = :id",
+        "SELECT id, country_code, name, admin1_name, admin1_code, population FROM geo_cities WHERE id = :id",
         {"id": int(city_id)},
     )
 

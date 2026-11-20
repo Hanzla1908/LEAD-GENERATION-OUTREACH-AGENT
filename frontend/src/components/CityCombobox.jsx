@@ -11,8 +11,8 @@ const CACHE_MS = 10 * 60 * 1000
 const CACHE_LIMIT = 200
 const pageCache = new Map()
 
-function cacheKey(code, query, offset) {
-  return `${code}|${query.toLowerCase()}|${offset}`
+function cacheKey(code, admin1, query, offset) {
+  return `${code}|${admin1}|${query.toLowerCase()}|${offset}`
 }
 
 function readCache(key) {
@@ -34,9 +34,11 @@ function placeLabel(item, countryName) {
   return item.admin1_name ? `${item.admin1_name}, ${countryName}` : countryName
 }
 
+// admin1 is an optional province code. When given, only the cities of that province are suggested. areaName is the
+// place named in the messages (the province, or the country when no province is chosen).
 export default function CityCombobox({
   value, selectedId = null, onChange, onSelect, countryCode, countryName, cityListReady = null,
-  disabled, invalid, describedBy,
+  admin1 = '', areaName = null, disabled, invalid, describedBy,
 }) {
   const baseId = useId()
   const listId = `${baseId}-list`
@@ -49,18 +51,19 @@ export default function CityCombobox({
   const [status, setStatus] = useState('idle')
   const [loadingMore, setLoadingMore] = useState(false)
   const query = value.trim()
+  const scope = areaName ?? countryName
 
-  // A different country means none of the shown cities apply any more.
+  // A different country or province means none of the shown cities apply any more.
   useEffect(() => {
     setItems([])
     setHasMore(false)
     setActive(0)
-  }, [countryCode])
+  }, [countryCode, admin1])
 
   // Each query (after a short pause) asks the server for the first page. A reply for an older query is ignored.
   useEffect(() => {
     let current = true
-    const key = cacheKey(countryCode, query, 0)
+    const key = cacheKey(countryCode, admin1, query, 0)
     latestKey.current = key
     // Results for the previous query are dropped at once, so Enter or a click can only pick a city that matches
     // what is typed now.
@@ -77,7 +80,7 @@ export default function CityCombobox({
         return
       }
       try {
-        const page = await api.searchCities(countryCode, query, { limit: PAGE_SIZE, offset: 0 })
+        const page = await api.searchCities(countryCode, query, { limit: PAGE_SIZE, offset: 0, admin1 })
         if (!current) return
         writeCache(key, page)
         setItems(page.items)
@@ -96,7 +99,7 @@ export default function CityCombobox({
       current = false
       clearTimeout(timer)
     }
-  }, [countryCode, query])
+  }, [countryCode, admin1, query])
 
   useEffect(() => {
     if (!open) return undefined
@@ -113,9 +116,9 @@ export default function CityCombobox({
     const offset = items.length
     setLoadingMore(true)
     try {
-      const page = await api.searchCities(countryCode, query, { limit: PAGE_SIZE, offset })
+      const page = await api.searchCities(countryCode, query, { limit: PAGE_SIZE, offset, admin1 })
       if (latestKey.current !== key) return
-      writeCache(cacheKey(countryCode, query, offset), page)
+      writeCache(cacheKey(countryCode, admin1, query, offset), page)
       setItems((prev) => [...prev, ...page.items])
       setHasMore(page.has_more)
     } catch {
@@ -151,11 +154,11 @@ export default function CityCombobox({
   if (status === 'loading' && items.length === 0) message = 'Searching cities…'
   else if (status === 'error') message = 'Could not load city suggestions. You can still type a city.'
   else if (status === 'ready' && items.length === 0 && query) {
-    message = `No city in ${countryName} matches “${query}”. It will be searched exactly as typed.`
+    message = `No city in ${scope} matches “${query}”. It will be searched exactly as typed.`
   } else if (status === 'ready' && items.length === 0) {
     message = cityListReady === false
       ? 'The city list has not been imported yet. Type any city.'
-      : `No cities listed for ${countryName} yet. Type any city.`
+      : `No cities listed for ${scope} yet. Type any city.`
   }
   const showPanel = open && (items.length > 0 || message)
 
@@ -187,7 +190,7 @@ export default function CityCombobox({
             <ul
               role="listbox"
               id={listId}
-              aria-label={`City suggestions in ${countryName}`}
+              aria-label={`City suggestions in ${scope}`}
               onMouseDown={(event) => event.preventDefault()}
             >
               {items.map((item, index) => (
