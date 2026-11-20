@@ -34,8 +34,8 @@ function placeLabel(item, countryName) {
   return item.admin1_name ? `${item.admin1_name}, ${countryName}` : countryName
 }
 
-// admin1 is an optional province code. When given, only the cities of that province are suggested. areaName is the
-// place named in the messages (the province, or the country when no province is chosen).
+// admin1 is an optional state code. When given, only the cities of that state are suggested. areaName is the
+// place named in the messages (the state, or the country when no state is chosen).
 export default function CityCombobox({
   value, selectedId = null, onChange, onSelect, countryCode, countryName, cityListReady = null,
   admin1 = '', areaName = null, disabled, invalid, describedBy,
@@ -53,7 +53,7 @@ export default function CityCombobox({
   const query = value.trim()
   const scope = areaName ?? countryName
 
-  // A different country or province means none of the shown cities apply any more.
+  // A different country or state means none of the shown cities apply any more.
   useEffect(() => {
     setItems([])
     setHasMore(false)

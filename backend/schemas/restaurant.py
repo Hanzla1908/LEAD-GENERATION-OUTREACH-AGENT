@@ -1,7 +1,7 @@
 from pydantic import BaseModel, Field, field_validator, model_validator
 from typing import Optional
 
-from services import industries, provinces
+from services import industries
 from services.countries import DEFAULT_COUNTRY_CODE, is_known_country, normalize_code
 from services.industries import DEFAULT_INDUSTRY
 from services.search_profiles import CATEGORY_PROFILES, CITY_PATTERN, canonical_city
@@ -14,15 +14,16 @@ class DiscoveryRequest(BaseModel):
     The city is either city_id (a city picked from the city database, checked against country_code on the server)
     or city (a name typed by the user, used exactly as typed after checks). Google Places is not involved in city
     lookup.
-    province is an optional province code of the country (services/provinces.py, "04" is Punjab). With a province and
-    no city, the whole province is searched. A picked city must belong to the province.
+    state is an optional first-level division code of the country (geo_admin1, e.g. "04" is Punjab in Pakistan). With a
+    state and no city, the whole state is searched. A picked city must belong to the state. The route checks that the
+    state exists for the country, against the database.
     category is the older restaurant field. It is still accepted, and it means the same as subcategory when the
     industry is Restaurants & Food.
     """
     country_code: str = Field(default=DEFAULT_COUNTRY_CODE, min_length=2, max_length=2)
     city: Optional[str] = Field(default=None, max_length=60)
     city_id: Optional[int] = Field(default=None, ge=1)
-    province: Optional[str] = Field(default=None, max_length=2)
+    state: Optional[str] = Field(default=None, max_length=20)
     industry: str = Field(default=DEFAULT_INDUSTRY, max_length=40)
     subcategory: Optional[str] = Field(default=None, max_length=40)
     category: str = Field(default="all", max_length=40)
@@ -38,16 +39,14 @@ class DiscoveryRequest(BaseModel):
 
     @model_validator(mode="after")
     def _resolve_city_and_subcategory(self):
-        # An empty province means no province. A province must belong to the chosen country.
-        if self.province == "":
-            self.province = None
-        if self.province is not None and not provinces.is_known_province(self.country_code, self.province):
-            raise ValueError("Unknown province for this country. Choose a province from the list.")
+        # An empty state means no state.
+        if self.state == "":
+            self.state = None
         # A city picked from the database is checked against the country in the route, which also reads its name.
-        # A typed city must be a plain name. With a province and no city, the whole province is searched.
+        # A typed city must be a plain name. With a state and no city, the whole state is searched.
         if self.city_id is None:
             cleaned = " ".join((self.city or "").split())
-            if cleaned or self.province is None:
+            if cleaned or self.state is None:
                 if len(cleaned) < 2:
                     raise ValueError("Enter a city name.")
                 if not CITY_PATTERN.fullmatch(cleaned):

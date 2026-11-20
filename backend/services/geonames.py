@@ -94,8 +94,8 @@ def search_cities(country_code: str, query: str | None = "", limit: int = DEFAUL
                   admin1: str | None = None) -> dict:
     """Cities in one country whose name (or an alternate name) starts with the query.
 
-    With an empty query the most populated cities come first. With admin1 (a province code such as "04"), only the
-    cities of that province are returned. Returns:
+    With an empty query the most populated cities come first. With admin1 (a state code such as "04"), only the
+    cities of that state are returned. Returns:
       {"items": [...], "limit": n, "offset": n, "has_more": bool, "source": "geonames" | "fallback"}
     Each item has id, name, admin1_name, admin1_code, country_code, population, and matched_alias (set when the query
     matched an alternate name instead of the main name).
@@ -110,7 +110,7 @@ def search_cities(country_code: str, query: str | None = "", limit: int = DEFAUL
         return cached
 
     if imported_city_count(code) == 0 and code == "PK":
-        # The built-in list has no provinces, so a province choice cannot be answered from it.
+        # The built-in list has no states, so a state choice cannot be answered from it.
         result = (_page([], limit, offset, "PK", source="fallback") if admin1
                   else _fallback_pakistan(needle, limit, offset))
     else:
@@ -120,21 +120,21 @@ def search_cities(country_code: str, query: str | None = "", limit: int = DEFAUL
 
 
 def _search_imported(code: str, needle: str, limit: int, offset: int, admin1: str | None = None) -> dict:
-    # The province condition is added only when a province is given. Its value is a bound parameter; the SQL text is
+    # The state condition is added only when a state is given. Its value is a bound parameter; the SQL text is
     # fixed.
-    province_params = {"a1": admin1} if admin1 else {}
-    city_province = " AND admin1_code = :a1" if admin1 else ""
-    joined_province = " AND c.admin1_code = :a1" if admin1 else ""
+    state_params = {"a1": admin1} if admin1 else {}
+    city_state = " AND admin1_code = :a1" if admin1 else ""
+    joined_state = " AND c.admin1_code = :a1" if admin1 else ""
     if not needle:
         rows = fetch_all(
             "SELECT id, name, admin1_name, admin1_code, population, NULL AS matched_alias FROM geo_cities "
-            f"WHERE country_code = :cc{city_province} ORDER BY population DESC, name ASC LIMIT :lim OFFSET :off",
-            {"cc": code, "lim": limit + 1, "off": offset, **province_params},
+            f"WHERE country_code = :cc{city_state} ORDER BY population DESC, name ASC LIMIT :lim OFFSET :off",
+            {"cc": code, "lim": limit + 1, "off": offset, **state_params},
         )
     else:
         # Main names and alternate names are scanned as prefix ranges on the indexed search_name column. Rows are
         # grouped per city so each city appears once. An exact match on the main name ranks first, then cities whose
-        # main name matches, then by population. The province condition is applied to the joined city.
+        # main name matches, then by population. The state condition is applied to the joined city.
         rows = fetch_all(
             f"""
             SELECT c.id, c.name, c.admin1_name, c.admin1_code, c.population,
@@ -149,13 +149,13 @@ def _search_imported(code: str, needle: str, limit: int, offset: int, admin1: st
                 FROM geo_city_alternate_names a
                 WHERE a.country_code = :cc AND a.search_name >= :lo AND a.search_name < :hi
             ) m
-            JOIN geo_cities c ON c.id = m.id{joined_province}
+            JOIN geo_cities c ON c.id = m.id{joined_state}
             GROUP BY c.id, c.name, c.admin1_name, c.admin1_code, c.population
             ORDER BY is_exact DESC, by_name DESC, c.population DESC, c.name ASC
             LIMIT :lim OFFSET :off
             """,
             {"cc": code, "q": needle, "lo": needle, "hi": needle + _HIGH, "lim": limit + 1, "off": offset,
-             **province_params},
+             **state_params},
         )
     return _page(rows, limit, offset, code, source="geonames")
 
@@ -194,6 +194,46 @@ def city_by_id(city_id: int) -> dict | None:
         "SELECT id, country_code, name, admin1_name, admin1_code, population FROM geo_cities WHERE id = :id",
         {"id": int(city_id)},
     )
+
+
+def list_states(country_code: str) -> dict:
+    """The first-level divisions of one country that have cities in the database, by name.
+
+    A country with no divisions in the data returns an empty list, and the interface then skips the state field. Nothing
+    here is typed in by hand: the divisions come from GeoNames admin1CodesASCII.txt, imported into geo_admin1.
+    """
+    code = countries.normalize_code(country_code)
+    key = ("states", code)
+    cached = _cache_get(key)
+    if cached is not None:
+        return cached
+    rows = fetch_all(
+        "SELECT a.code, a.name FROM geo_admin1 a WHERE a.country_code = :cc AND EXISTS ("
+        "SELECT 1 FROM geo_cities c WHERE c.country_code = a.country_code AND c.admin1_code = a.code) "
+        "ORDER BY a.name, a.code",
+        {"cc": code},
+    )
+    result = {"items": [{"code": row["code"], "name": row["name"]} for row in rows], "source": SOURCE}
+    _cache_put(key, result)
+    return result
+
+
+def state_name(country_code: str, code: str | None) -> str | None:
+    """The name of a state (first-level division) of a country, or None when the country has no such code.
+
+    Checked against geo_admin1, so a state is valid even when no city of it is in the database yet.
+    """
+    if not code:
+        return None
+    cc = countries.normalize_code(country_code)
+    key = ("state", cc, code)
+    cached = _cache_get(key)
+    if cached is None:
+        row = fetch_one("SELECT name FROM geo_admin1 WHERE country_code = :cc AND code = :code",
+                        {"cc": cc, "code": code})
+        cached = {"name": row["name"] if row else None}
+        _cache_put(key, cached)
+    return cached["name"]
 
 
 def status() -> dict:

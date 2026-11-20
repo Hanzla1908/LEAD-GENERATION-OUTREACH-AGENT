@@ -1,8 +1,9 @@
-"""Load GeoNames city data into geo_cities and geo_city_alternate_names.
+"""Load GeoNames city data into geo_cities, geo_city_alternate_names and geo_admin1.
 
 Input files (see backend/data/geonames/README.md):
 - cities15000.txt     every populated place with population of at least 15,000, plus seats of admin divisions
-- admin1CodesASCII.txt names of first-level divisions, keyed "CC.code" (e.g. "PK.04" is Punjab)
+- admin1CodesASCII.txt first-level divisions of every country (states, provinces, regions), keyed "CC.code"
+  (e.g. "PK.04" is Punjab). They are written to geo_admin1.
 
 The import is idempotent. Each run replaces the whole geo_* dataset in one transaction, so re-running with the same
 files gives the same rows, and a failed run leaves the previous data in place.
@@ -40,6 +41,10 @@ _INSERT_CITY = text(
 _INSERT_ALT = text(
     "INSERT INTO geo_city_alternate_names (city_id, country_code, alt_name, search_name) "
     "VALUES (:city_id, :cc, :alt, :search)"
+)
+_INSERT_ADMIN1 = text(
+    "INSERT INTO geo_admin1 (country_code, code, name, ascii_name, geoname_id) "
+    "VALUES (:cc, :code, :name, :ascii, :gid)"
 )
 
 
@@ -81,6 +86,27 @@ def read_admin1_names(path: Path) -> dict[str, str]:
         if len(parts) >= 2 and parts[0]:
             names[parts[0]] = parts[1]
     return names
+
+
+def read_admin1_rows(path: Path) -> list[dict]:
+    """One row per first-level division: country, code, name, ascii name and geonameid. Unknown countries are skipped.
+
+    Columns in the file: "CC.code", name, ascii name, geonameid. The code is kept as text ("04", "CA", "ENG").
+    """
+    rows = []
+    for line in path.read_text(encoding="utf-8").splitlines():
+        parts = line.split("\t")
+        if len(parts) < 2 or "." not in parts[0] or not parts[1].strip():
+            continue
+        country_code, code = parts[0].split(".", 1)
+        country_code = country_code.strip().upper()
+        code = code.strip()
+        if not code or not countries.is_known_country(country_code):
+            continue
+        geoname_id = int(parts[3]) if len(parts) > 3 and parts[3].strip().isdigit() else None
+        rows.append({"cc": country_code, "code": code, "name": parts[1].strip(),
+                     "ascii": (parts[2].strip() if len(parts) > 2 else "") or None, "gid": geoname_id})
+    return rows
 
 
 def _alt_names(raw: str) -> list[str]:
@@ -135,6 +161,7 @@ def import_from_files(cities_path: Path, admin1_path: Path, source_url: str = SO
                       file_sha256: str | None = None) -> dict:
     """Replace all geo_* rows with the contents of the two files. Returns the counts that were written."""
     admin1_names = read_admin1_names(admin1_path)
+    admin1_rows = read_admin1_rows(admin1_path)
     file_sha = file_sha256 or sha256_of(cities_path)
 
     city_count = alt_count = skipped = 0
@@ -145,6 +172,9 @@ def import_from_files(cities_path: Path, admin1_path: Path, source_url: str = SO
         # Alternate names reference cities, so they are removed first.
         conn.execute(text("DELETE FROM geo_city_alternate_names"))
         conn.execute(text("DELETE FROM geo_cities"))
+        conn.execute(text("DELETE FROM geo_admin1"))
+        if admin1_rows:
+            conn.execute(_INSERT_ADMIN1, admin1_rows)
 
         def flush():
             nonlocal city_batch, alt_batch
@@ -177,4 +207,5 @@ def import_from_files(cities_path: Path, admin1_path: Path, source_url: str = SO
              "skipped": skipped, "licence": LICENCE, "at": datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S")},
         )
     clear_cache()
-    return {"cities": city_count, "alternate_names": alt_count, "skipped": skipped, "attribution": ATTRIBUTION}
+    return {"cities": city_count, "alternate_names": alt_count, "skipped": skipped, "divisions": len(admin1_rows),
+            "attribution": ATTRIBUTION}

@@ -2,5 +2,7 @@ AE.03	Dubai	Dubai	292224
 AU.02	New South Wales	New South Wales	2155400
 CA.08	Ontario	Ontario	6093943
 GB.ENG	England	England	6269131
+PK.05	Sindh	Sindh	1164807
 PK.04	Punjab	Punjab	1167710
+PK.03	Khyber Pakhtunkhwa	Khyber Pakhtunkhwa	1168873
 US.NY	New York	New York	5128638
